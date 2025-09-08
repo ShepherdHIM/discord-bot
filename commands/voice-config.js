@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('disc
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('ses-ayarlari')
+        .setName('ses_ayarlari')
         .setDescription('Ses aktivitesi izleme ayarlarını yapılandır')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(subcommand =>
@@ -11,7 +11,7 @@ module.exports = {
                 .setDescription('Mevcut ses aktivitesi ayarlarını göster'))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('xp-orani')
+                .setName('xp_orani')
                 .setDescription('Dakika başına XP oranını ayarla')
                 .addIntegerOption(option =>
                     option.setName('miktar')
@@ -21,7 +21,7 @@ module.exports = {
                         .setMaxValue(50)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('coin-orani')
+                .setName('coin_orani')
                 .setDescription('Dakika başına coin oranını ayarla')
                 .addIntegerOption(option =>
                     option.setName('miktar')
@@ -31,7 +31,7 @@ module.exports = {
                         .setMaxValue(25)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('minimum-uyeler')
+                .setName('minimum_uyeler')
                 .setDescription('Ödül için minimum kanal üye sayısını ayarla')
                 .addIntegerOption(option =>
                     option.setName('sayi')
@@ -41,7 +41,7 @@ module.exports = {
                         .setMaxValue(10)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('susturulmus-odul')
+                .setName('susturulmus_odul')
                 .setDescription('Susturulmuş kullanıcıların ödül alıp almayacağını ayarla')
                 .addBooleanOption(option =>
                     option.setName('etkin')
@@ -49,7 +49,7 @@ module.exports = {
                         .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('sagirlastirilmis-odul')
+                .setName('sagirlastirilmis_odul')
                 .setDescription('Sağırlaştırılmış kullanıcıların ödül alıp almayacağını ayarla')
                 .addBooleanOption(option =>
                     option.setName('etkin')
@@ -57,7 +57,7 @@ module.exports = {
                         .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('afk-haric')
+                .setName('afk_haric')
                 .setDescription('AFK kanalını ödül hesaplamasından çıkar')
                 .addBooleanOption(option =>
                     option.setName('haric-tut')
@@ -132,7 +132,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'xp-orani') {
+        else if (subcommand === 'xp_orani') {
             const xpPerMinute = interaction.options.getInteger('miktar');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
@@ -154,7 +154,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'coin-orani') {
+        else if (subcommand === 'coin_orani') {
             const coinsPerMinute = interaction.options.getInteger('miktar');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
@@ -176,7 +176,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'minimum-uyeler') {
+        else if (subcommand === 'minimum_uyeler') {
             const minMembers = interaction.options.getInteger('sayi');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
@@ -198,7 +198,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'susturulmus-odul') {
+        else if (subcommand === 'susturulmus_odul') {
             const enabled = interaction.options.getBoolean('etkin');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
@@ -220,7 +220,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'sagirlastirilmis-odul') {
+        else if (subcommand === 'sagirlastirilmis_odul') {
             const enabled = interaction.options.getBoolean('etkin');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
@@ -242,7 +242,7 @@ module.exports = {
             await interaction.reply({ embeds: [embed], ephemeral: true });
         }
         
-        else if (subcommand === 'afk-haric') {
+        else if (subcommand === 'afk_haric') {
             const exclude = interaction.options.getBoolean('haric-tut');
             
             const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);

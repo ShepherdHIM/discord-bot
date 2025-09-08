@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
+const { checkChannelRestriction } = require('../utils/channelRestrictions');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -9,7 +10,7 @@ module.exports = {
                 .setName('cal')
                 .setDescription('Bir sarki veya calma listesi cal')
                 .addStringOption(option =>
-                    option.setName('query')
+                    option.setName('sarki')
                         .setDescription('Sarki adi, sanatci, YouTube URL veya calma listesi URL')
                         .setRequired(true)))
         .addSubcommand(subcommand =>
@@ -37,7 +38,7 @@ module.exports = {
                 .setName('ses')
                 .setDescription('Muzik sesini ayarla')
                 .addIntegerOption(option =>
-                    option.setName('level')
+                    option.setName('seviye')
                         .setDescription('Ses seviyesi (1-100)')
                         .setMinValue(1)
                         .setMaxValue(100)
@@ -74,14 +75,6 @@ module.exports = {
                         .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('ara')
-                .setDescription('Muzik ara ve sonuclardan sec')
-                .addStringOption(option =>
-                    option.setName('query')
-                        .setDescription('Ne aranacak')
-                        .setRequired(true)))
-        .addSubcommand(subcommand =>
-            subcommand
                 .setName('sozler')
                 .setDescription('Mevcut sarkinin sozlerini al veya ara'))
         .addSubcommand(subcommand =>
@@ -91,6 +84,15 @@ module.exports = {
     
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
+        
+        // Check channel restriction for music commands
+        const restriction = checkChannelRestriction(interaction, 'muzik');
+        if (restriction.isRestricted) {
+            return interaction.reply({
+                content: restriction.message,
+                flags: 64
+            });
+        }
         
         // Get music player manager
         const musicPlayer = interaction.client.musicPlayer;
@@ -124,7 +126,7 @@ module.exports = {
         try {
             switch (subcommand) {
                 case 'cal':
-                    const query = interaction.options.getString('query');
+                    const query = interaction.options.getString('sarki');
                     await musicPlayer.play(interaction, query);
                     break;
                     
@@ -149,7 +151,7 @@ module.exports = {
                     break;
                     
                 case 'ses':
-                    const volume = interaction.options.getInteger('level');
+                    const volume = interaction.options.getInteger('seviye');
                     await musicPlayer.setVolume(interaction, volume);
                     break;
                     
@@ -169,11 +171,6 @@ module.exports = {
                 case 'cikar':
                     const position = interaction.options.getInteger('position');
                     await this.removeTrack(interaction, musicPlayer, position);
-                    break;
-                    
-                case 'ara':
-                    const searchQuery = interaction.options.getString('query');
-                    await this.searchMusic(interaction, musicPlayer, searchQuery);
                     break;
                     
                 case 'sozler':

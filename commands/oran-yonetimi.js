@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('oran-yonetimi')
+        .setName('oran_yonetimi')
         .setDescription('Kapsamlı XP ve coin oran yönetim sistemi')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(subcommand =>
@@ -11,7 +11,7 @@ module.exports = {
                 .setDescription('Tüm oranları ve istatistikleri göster'))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('hizli-ayar')
+                .setName('hizli_ayar')
                 .setDescription('Önceden tanımlanmış oran setlerini kullan')
                 .addStringOption(option =>
                     option.setName('profil')
@@ -26,7 +26,7 @@ module.exports = {
                         )))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('ozel-ayar')
+                .setName('ozel_ayar')
                 .setDescription('Özel XP ve coin oranları ayarla')
                 .addIntegerOption(option =>
                     option.setName('xp')
@@ -78,10 +78,10 @@ module.exports = {
             case 'goster':
                 await this.showRates(interaction, voiceManager);
                 break;
-            case 'hizli-ayar':
+            case 'hizli_ayar':
                 await this.quickSetRates(interaction, voiceManager);
                 break;
-            case 'ozel-ayar':
+            case 'ozel_ayar':
                 await this.customSetRates(interaction, voiceManager);
                 break;
             case 'hesaplama':

@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('sunucu-bilgi')
+        .setName('sunucu_bilgi')
         .setDescription('Bu sunucu hakkinda bilgi al'),
     
     async execute(interaction) {

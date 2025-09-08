@@ -94,8 +94,18 @@ module.exports = {
                         .setRequired(false)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('gunluk')
-                .setDescription('Gunluk bonusunuzu alin!'))
+                .setName('tas-kagit-makas')
+                .setDescription('Taş kağıt makas oyunu oyna - kullanıcı vs kullanıcı')
+                .addUserOption(option =>
+                    option.setName('rakip')
+                        .setDescription('Oynayacağınız kişi')
+                        .setRequired(true))
+                .addIntegerOption(option =>
+                    option.setName('bahis')
+                        .setDescription('Bahis miktarı (her iki oyuncu için)')
+                        .setMinValue(1)
+                        .setMaxValue(100)
+                        .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('istatistikler')
@@ -133,8 +143,8 @@ module.exports = {
             case 'tahmin':
                 await this.playGuess(interaction, voiceManager, userStats);
                 break;
-            case 'rulet':
-                await this.playRoulette(interaction, voiceManager, userStats);
+            case 'tas-kagit-makas':
+                await this.playRockPaperScissors(interaction, voiceManager, userStats);
                 break;
             case 'gunluk':
                 await this.claimDaily(interaction, voiceManager, userStats);
@@ -587,11 +597,343 @@ module.exports = {
         await interaction.reply({ embeds: [embed] });
     },
     
+    async playRockPaperScissors(interaction, voiceManager, userStats) {
+        const opponent = interaction.options.getUser('rakip');
+        const bet = interaction.options.getInteger('bahis');
+        
+        // Check if user is trying to play against themselves
+        if (opponent.id === interaction.user.id) {
+            return interaction.reply({
+                content: '❌ Kendinizle oynayamazsınız! Başka birini seçin.',
+                ephemeral: true
+            });
+        }
+        
+        // Check if user has enough coins
+        console.log(`🎮 User ${interaction.user.username} has ${userStats.coins} coins, needs ${bet} coins`);
+        if (userStats.coins < bet) {
+            return interaction.reply({
+                content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
+                ephemeral: true
+            });
+        }
+        
+        // Get opponent stats
+        const opponentStats = await voiceManager.getUserStats(opponent.id, interaction.guildId);
+        if (!opponentStats) {
+            return interaction.reply({
+                content: `❌ ${opponent.username} henüz bot sistemine kayıtlı değil! Önce bir ses kanalına katılması gerekiyor.`,
+                ephemeral: true
+            });
+        }
+        
+        // Check if opponent has enough coins
+        if (opponentStats.coins < bet) {
+            return interaction.reply({
+                content: `❌ ${opponent.username} yeterli coine sahip değil! ${opponentStats.coins} coini var ama ${bet} coin gerekiyor.`,
+                ephemeral: true
+            });
+        }
+        
+        // Create game invitation
+        const embed = new EmbedBuilder()
+            .setColor('#FF6B00')
+            .setTitle('✂️ Taş Kağıt Makas Daveti')
+            .setDescription(`${interaction.user.username} ${opponent.username} ile taş kağıt makas oynamak istiyor!`)
+            .addFields(
+                { name: '💰 Bahis Miktarı', value: `${bet} coin (her oyuncu için)`, inline: true },
+                { name: '🎯 Kazanan', value: 'Tüm bahisleri alır', inline: true },
+                { name: '⏰ Süre', value: '30 saniye', inline: true }
+            )
+            .setFooter({ text: `${opponent.username} kabul etmek için aşağıdaki butonları kullanabilir` })
+            .setTimestamp();
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`rps_accept_${interaction.user.id}_${opponent.id}_${bet}`)
+                    .setLabel('✅ Kabul Et')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId(`rps_decline_${interaction.user.id}_${opponent.id}_${bet}`)
+                    .setLabel('❌ Reddet')
+                    .setStyle(ButtonStyle.Danger)
+            );
+        
+        await interaction.reply({ 
+            content: `${opponent}`, 
+            embeds: [embed], 
+            components: [row] 
+        });
+        
+        // Store game data
+        this.storeGameData(`rps_${interaction.user.id}_${opponent.id}`, {
+            challenger: interaction.user,
+            opponent: opponent,
+            bet: bet,
+            guildId: interaction.guildId,
+            voiceManager: voiceManager,
+            startTime: Date.now()
+        });
+        
+        // Auto-decline after 30 seconds
+        setTimeout(async () => {
+            const gameData = this.getGameData(`rps_${interaction.user.id}_${opponent.id}`);
+            if (gameData) {
+                try {
+                    const timeoutEmbed = new EmbedBuilder()
+                        .setColor('#FF0000')
+                        .setTitle('⏰ Süre Doldu!')
+                        .setDescription(`${opponent.username} daveti kabul etmedi. Oyun iptal edildi.`)
+                        .setTimestamp();
+                    
+                    await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
+                } catch (error) {
+                    console.error('Error handling RPS timeout:', error);
+                }
+                this.gameData.delete(`rps_${interaction.user.id}_${opponent.id}`);
+            }
+        }, 30000);
+    },
+    
+    async handleRPSChoice(interaction, choice) {
+        const customId = interaction.customId;
+        const [, action, challengerId, opponentId, bet] = customId.split('_');
+        
+        if (action === 'decline') {
+            const embed = new EmbedBuilder()
+                .setColor('#FF0000')
+                .setTitle('❌ Oyun Reddedildi')
+                .setDescription(`${interaction.user.username} oyunu reddetti.`)
+                .setTimestamp();
+            
+            await interaction.update({ embeds: [embed], components: [] });
+            this.gameData.delete(`rps_${challengerId}_${opponentId}`);
+            return;
+        }
+        
+        if (action === 'accept') {
+            // Create choice buttons for both players
+            const embed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setTitle('✂️ Taş Kağıt Makas - Seçim Zamanı!')
+                .setDescription('Her iki oyuncu da seçimini yapmalı!')
+                .addFields(
+                    { name: '💰 Bahis', value: `${bet} coin`, inline: true },
+                    { name: '⏰ Süre', value: '30 saniye', inline: true }
+                )
+                .setTimestamp();
+            
+            const row = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`rps_choice_${challengerId}_${opponentId}_${bet}_rock`)
+                        .setLabel('🪨 Taş')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`rps_choice_${challengerId}_${opponentId}_${bet}_paper`)
+                        .setLabel('📄 Kağıt')
+                        .setStyle(ButtonStyle.Primary),
+                    new ButtonBuilder()
+                        .setCustomId(`rps_choice_${challengerId}_${opponentId}_${bet}_scissors`)
+                        .setLabel('✂️ Makas')
+                        .setStyle(ButtonStyle.Primary)
+                );
+            
+            await interaction.update({ embeds: [embed], components: [row] });
+            
+            // Store choices
+            this.storeGameData(`rps_choices_${challengerId}_${opponentId}`, {
+                challenger: challengerId,
+                opponent: opponentId,
+                bet: parseInt(bet),
+                choices: {},
+                guildId: interaction.guildId,
+                voiceManager: interaction.client.voiceManager,
+                startTime: Date.now()
+            });
+            
+            // Auto-timeout after 30 seconds
+            setTimeout(async () => {
+                const choicesData = this.getGameData(`rps_choices_${challengerId}_${opponentId}`);
+                if (choicesData && Object.keys(choicesData.choices).length < 2) {
+                    try {
+                        const timeoutEmbed = new EmbedBuilder()
+                            .setColor('#FF0000')
+                            .setTitle('⏰ Süre Doldu!')
+                            .setDescription('Seçim süresi doldu. Oyun iptal edildi.')
+                            .setTimestamp();
+                        
+                        await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
+                    } catch (error) {
+                        console.error('Error handling RPS choice timeout:', error);
+                    }
+                    this.gameData.delete(`rps_choices_${challengerId}_${opponentId}`);
+                }
+            }, 30000);
+        }
+        
+        if (action === 'choice') {
+            console.log(`🎮 RPS choice handler called for user ${interaction.user.id}, choice: ${choice}`);
+            const choicesData = this.getGameData(`rps_choices_${challengerId}_${opponentId}`);
+            console.log(`🎮 RPS game data found:`, choicesData ? 'Yes' : 'No');
+            if (!choicesData) {
+                return interaction.reply({ content: '❌ Oyun bulunamadı! Lütfen yeni bir oyun başlatın.', ephemeral: true });
+            }
+            
+            // Store the choice
+            choicesData.choices[interaction.user.id] = choice;
+            
+            // Check if both players have made their choices
+            if (Object.keys(choicesData.choices).length === 2) {
+                // Defer the interaction before resolving the game
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.deferReply();
+                }
+                await this.resolveRPSGame(interaction, choicesData);
+            } else {
+                // Acknowledge the choice
+                await interaction.reply({ 
+                    content: `✅ Seçiminizi yaptınız: ${this.getChoiceEmoji(choice)} ${this.getChoiceName(choice)}`, 
+                    ephemeral: true 
+                });
+            }
+        }
+    },
+    
+    async resolveRPSGame(interaction, gameData) {
+        const challengerChoice = gameData.choices[gameData.challenger];
+        const opponentChoice = gameData.choices[gameData.opponent];
+        
+        const challenger = interaction.guild.members.cache.get(gameData.challenger);
+        const opponent = interaction.guild.members.cache.get(gameData.opponent);
+        
+        // Determine winner
+        let winner = null;
+        let result = '';
+        
+        if (challengerChoice === opponentChoice) {
+            result = 'Berabere!';
+        } else if (
+            (challengerChoice === 'rock' && opponentChoice === 'scissors') ||
+            (challengerChoice === 'paper' && opponentChoice === 'rock') ||
+            (challengerChoice === 'scissors' && opponentChoice === 'paper')
+        ) {
+            winner = challenger;
+            result = `${challenger.user.username} kazandı!`;
+        } else {
+            winner = opponent;
+            result = `${opponent.user.username} kazandı!`;
+        }
+        
+        // Handle coin transfers
+        if (winner) {
+            const winnerStats = await gameData.voiceManager.getUserStats(winner.id, gameData.guildId);
+            const loserStats = await gameData.voiceManager.getUserStats(
+                winner.id === gameData.challenger ? gameData.opponent : gameData.challenger, 
+                gameData.guildId
+            );
+            
+            // Transfer coins
+            await gameData.voiceManager.db.updateUserStats(
+                winner.id, 
+                gameData.guildId, 
+                winnerStats.total_xp, 
+                winnerStats.coins + gameData.bet * 2, 
+                winnerStats.voice_time_minutes
+            );
+            
+            await gameData.voiceManager.db.updateUserStats(
+                winner.id === gameData.challenger ? gameData.opponent : gameData.challenger, 
+                gameData.guildId, 
+                loserStats.total_xp, 
+                loserStats.coins - gameData.bet, 
+                loserStats.voice_time_minutes
+            );
+        } else {
+            // Draw - refund coins to both players (no transfer needed)
+            // Both players keep their original coins
+        }
+        
+        // Create result embed
+        const embed = new EmbedBuilder()
+            .setColor(winner ? '#00FF00' : '#FFD700')
+            .setTitle('✂️ Taş Kağıt Makas Sonucu')
+            .setDescription(result)
+            .addFields(
+                { 
+                    name: `${challenger.user.username}`, 
+                    value: `${this.getChoiceEmoji(challengerChoice)} ${this.getChoiceName(challengerChoice)}`, 
+                    inline: true 
+                },
+                { 
+                    name: `${opponent.user.username}`, 
+                    value: `${this.getChoiceEmoji(opponentChoice)} ${this.getChoiceName(opponentChoice)}`, 
+                    inline: true 
+                },
+                { name: '💰 Bahis', value: `${gameData.bet} coin`, inline: true }
+            )
+            .setTimestamp();
+        
+        if (winner) {
+            embed.addFields({
+                name: '🎉 Kazanan',
+                value: `${winner.user.username} ${gameData.bet * 2} coin kazandı!`,
+                inline: false
+            });
+        } else {
+            embed.addFields({
+                name: '🤝 Sonuç',
+                value: 'Berabere! Herkes kendi bahsini geri alır.',
+                inline: false
+            });
+        }
+        
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.editReply({ embeds: [embed], components: [] });
+            } else {
+                await interaction.reply({ embeds: [embed], components: [] });
+            }
+        } catch (error) {
+            console.error('Error updating RPS game result:', error);
+            // Try to send a follow-up message if edit fails
+            try {
+                await interaction.followUp({ embeds: [embed], ephemeral: false });
+            } catch (followUpError) {
+                console.error('Error sending follow-up for RPS game:', followUpError);
+            }
+        }
+        
+        // Clean up
+        this.gameData.delete(`rps_choices_${gameData.challenger}_${gameData.opponent}`);
+    },
+    
+    getChoiceEmoji(choice) {
+        switch (choice) {
+            case 'rock': return '🪨';
+            case 'paper': return '📄';
+            case 'scissors': return '✂️';
+            default: return '❓';
+        }
+    },
+    
+    getChoiceName(choice) {
+        switch (choice) {
+            case 'rock': return 'Taş';
+            case 'paper': return 'Kağıt';
+            case 'scissors': return 'Makas';
+            default: return 'Bilinmiyor';
+        }
+    },
+    
     // Helper methods for game data management
     gameData: new Map(),
     
     storeGameData(userId, data) {
+        console.log(`🎮 Storing game data for: ${userId}`);
         this.gameData.set(userId, data);
+        console.log(`🎮 Game data stored. Total entries: ${this.gameData.size}`);
         // Clean up after 10 minutes to prevent memory leaks
         setTimeout(() => {
             if (this.gameData.has(userId)) {

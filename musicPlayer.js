@@ -11,10 +11,32 @@ class MusicPlayerManager {
             }
         });
         
+        // Register extractors
+        this.registerExtractors();
+        
         // Store guild music data
         this.guildData = new Map();
         
         this.setupPlayerEvents();
+    }
+    
+    registerExtractors() {
+        try {
+            // Try to register discord-player-youtubei first (preferred)
+            const { YoutubeiExtractor } = require('discord-player-youtubei');
+            this.player.extractors.register(YoutubeiExtractor, {});
+            console.log('✅ Youtubei extractor registered');
+        } catch (error) {
+            console.log('⚠️ Youtubei extractor not available, using default');
+            // Fallback to default extractors
+            try {
+                const { YoutubeExtractor } = require('@discord-player/extractor');
+                this.player.extractors.register(YoutubeExtractor, {});
+                console.log('✅ Default YouTube extractor registered');
+            } catch (fallbackError) {
+                console.log('⚠️ No YouTube extractors available');
+            }
+        }
     }
     
     setupPlayerEvents() {
@@ -46,7 +68,10 @@ class MusicPlayerManager {
             guildData.isPlaying = false;
             guildData.currentTrack = null;
             
-            this.sendQueueFinishedMessage(queue);
+            // Only send message if music was actually played
+            if (guildData.songsPlayed > 0) {
+                this.sendQueueFinishedMessage(queue);
+            }
         });
         
         // Error handling

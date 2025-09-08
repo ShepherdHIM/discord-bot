@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('liderlik-tablosu')
+        .setName('liderlik_tablosu')
         .setDescription('Sunucu liderlik tablolarini goruntuleyin')
         .addStringOption(option =>
             option.setName('tur')

@@ -2,11 +2,11 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bilgi-yarismasi')
+        .setName('bilgi_yarismasi')
         .setDescription('XP ve coin kazanmak icin bilgi yarismasi oynayin!')
         .addStringOption(option =>
-            option.setName('category')
-                .setDescription('Bilgi yarismasi kategorisi secin')
+            option.setName('kategori')
+                .setDescription('Bilgi yarışması kategorisi seçin')
                 .setRequired(false)
                 .addChoices(
                     { name: 'Genel Bilgi', value: 'general' },
@@ -16,8 +16,8 @@ module.exports = {
                     { name: 'Rastgele', value: 'random' }
                 ))
         .addStringOption(option =>
-            option.setName('difficulty')
-                .setDescription('Zorluk seviyesi secin')
+            option.setName('zorluk')
+                .setDescription('Zorluk seviyesi seçin')
                 .setRequired(false)
                 .addChoices(
                     { name: 'Kolay', value: 'easy' },
@@ -26,8 +26,8 @@ module.exports = {
                 )),
 
     async execute(interaction) {
-        const category = interaction.options.getString('category') || 'random';
-        const difficulty = interaction.options.getString('difficulty') || 'medium';
+        const category = interaction.options.getString('kategori') || 'random';
+        const difficulty = interaction.options.getString('zorluk') || 'medium';
         
         // Get voice manager for rewards
         const voiceManager = interaction.client.voiceManager;
@@ -55,7 +55,7 @@ module.exports = {
             row.addComponents(
                 new ButtonBuilder()
                     .setCustomId(`trivia_${index}_${answer === question.correct_answer ? 'correct' : 'incorrect'}`)
-                    .setLabel(answer)
+                    .setLabel(answer.length > 80 ? answer.substring(0, 77) + '...' : answer)
                     .setStyle(ButtonStyle.Primary)
             );
         });
@@ -88,11 +88,11 @@ module.exports = {
         
         const embed = new EmbedBuilder()
             .setColor('#4169E1')
-            .setTitle(`🧠 ${category.charAt(0).toUpperCase() + category.slice(1)} Bilgi Yarışması`)
-            .setDescription(`**${difficulty.charAt(0).toUpperCase() + difficulty.slice(1)} Soru**\n\n${question.question}`)
+            .setTitle(`🧠 ${this.getCategoryDisplayName(category)} Bilgi Yarışması`)
+            .setDescription(`**${this.getDifficultyDisplayName(difficulty)} Seviye Soru**\n\n${question.question}`)
             .addFields(
-                { name: '🏆 Doğru Cevap', value: `+${xpReward} XP, +${coinReward} coin`, inline: true },
-                { name: '🎯 Yanlış Cevap', value: `+5 XP (katılım)`, inline: true },
+                { name: '🏆 Doğru Cevap Ödülü', value: `+${xpReward} XP, +${coinReward} coin`, inline: true },
+                { name: '🎯 Yanlış Cevap Ödülü', value: `+5 XP (katılım)`, inline: true },
                 { name: '⏰ Zaman Sınırı', value: '30 saniye', inline: true }
             )
             .setFooter({ 
@@ -115,10 +115,10 @@ module.exports = {
             startTime: Date.now()
         });
         
-        // Auto-timeout after 30 seconds
+        // Auto-timeout after 60 seconds
         setTimeout(async () => {
             const triviaData = this.getTriviaData(interaction.user.id);
-            if (triviaData) {
+            if (triviaData && !triviaData.answered) {
                 try {
                     const timeoutEmbed = new EmbedBuilder()
                         .setColor('#FF6B00')
@@ -142,13 +142,13 @@ module.exports = {
                 }
                 this.triviaData.delete(interaction.user.id);
             }
-        }, 30000);
+        }, 60000);
     },
     
     getRandomQuestion(category, difficulty) {
         const questions = this.getQuestionBank();
         const categoryQuestions = category === 'random' ? 
-            questions.flat() : 
+            Object.values(questions).flat() : 
             questions[category] || questions.general;
         
         const difficultyQuestions = categoryQuestions.filter(q => q.difficulty === difficulty);
@@ -324,5 +324,110 @@ module.exports = {
     
     clearTriviaData(userId) {
         this.triviaData.delete(userId);
+    },
+    
+    async handleTriviaAnswer(interaction, isCorrect) {
+        console.log(`🎯 Trivia answer handler called for user ${interaction.user.id}, isCorrect: ${isCorrect}`);
+        const triviaData = this.getTriviaData(interaction.user.id);
+        console.log(`🎯 Trivia data found:`, triviaData ? 'Yes' : 'No');
+        if (!triviaData) {
+            return interaction.reply({ content: '❌ Oyun bulunamadı! Lütfen yeni bir soru başlatın.', ephemeral: true });
+        }
+        
+        // Check if already answered
+        if (triviaData.answered) {
+            return interaction.reply({ content: '❌ Bu soruyu zaten cevapladınız!', ephemeral: true });
+        }
+        
+        triviaData.answered = true;
+        
+        let rewardText = '';
+        let newXP = triviaData.userStats.total_xp;
+        let newCoins = triviaData.userStats.coins;
+        
+        if (isCorrect) {
+            // Give full rewards for correct answer
+            newXP += triviaData.xpReward;
+            newCoins += triviaData.coinReward;
+            rewardText = `🎉 Doğru cevap! +${triviaData.xpReward} XP, +${triviaData.coinReward} coin kazandınız!`;
+        } else {
+            // Give participation reward for wrong answer
+            newXP += 5;
+            rewardText = `❌ Yanlış cevap! Doğru cevap: **${triviaData.question.correct_answer}**\n+5 XP (katılım ödülü)`;
+        }
+        
+        // Update user stats
+        await triviaData.voiceManager.db.updateUserStats(
+            interaction.user.id,
+            interaction.guildId,
+            newXP,
+            newCoins,
+            triviaData.userStats.voice_time_minutes
+        );
+        
+        // Check for level up
+        const oldLevel = Math.floor(triviaData.userStats.total_xp / 100);
+        const newLevel = Math.floor(newXP / 100);
+        
+        if (newLevel > oldLevel) {
+            const member = interaction.guild.members.cache.get(interaction.user.id);
+            if (member) {
+                console.log(`🎉 User ${interaction.user.username} leveled up from ${oldLevel} to ${newLevel} through trivia`);
+                await triviaData.voiceManager.handleLevelUp(member, newLevel);
+            }
+        }
+        
+        // Create result embed
+        const resultEmbed = new EmbedBuilder()
+            .setColor(isCorrect ? '#00FF00' : '#FF6B00')
+            .setTitle(isCorrect ? '🎉 Doğru Cevap!' : '❌ Yanlış Cevap!')
+            .setDescription(rewardText)
+            .addFields(
+                { name: '💰 Yeni Bakiye', value: `${newCoins} coin`, inline: true },
+                { name: '📈 Toplam XP', value: `${newXP} XP`, inline: true },
+                { name: '⭐ Seviye', value: `Seviye ${newLevel}`, inline: true }
+            )
+            .setFooter({ text: 'Başka bir soru deneyiniz!' })
+            .setTimestamp();
+        
+        await interaction.update({ embeds: [resultEmbed], components: [] });
+        
+        // Clean up
+        this.triviaData.delete(interaction.user.id);
+    },
+    
+    triviaData: new Map(),
+    
+    storeTriviaData(userId, data) {
+        console.log(`🎯 Storing trivia data for user ${userId}`);
+        this.triviaData.set(userId, data);
+        console.log(`🎯 Trivia data stored. Total entries: ${this.triviaData.size}`);
+        // Clean up after 10 minutes to prevent memory leaks
+        setTimeout(() => {
+            if (this.triviaData.has(userId)) {
+                console.log(`🎯 Cleaning up expired trivia data for user ${userId}`);
+                this.triviaData.delete(userId);
+            }
+        }, 10 * 60 * 1000);
+    },
+    
+    getCategoryDisplayName(category) {
+        const names = {
+            'general': 'Genel Bilgi',
+            'gaming': 'Oyun',
+            'science': 'Bilim',
+            'history': 'Tarih',
+            'random': 'Rastgele'
+        };
+        return names[category] || category;
+    },
+    
+    getDifficultyDisplayName(difficulty) {
+        const names = {
+            'easy': 'Kolay',
+            'medium': 'Orta',
+            'hard': 'Zor'
+        };
+        return names[difficulty] || difficulty;
     }
 };

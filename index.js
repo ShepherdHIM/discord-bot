@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, ActivityType, REST, Routes } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const VoiceActivityManager = require('./voiceManager');
@@ -50,23 +50,122 @@ if (fs.existsSync(commandsPath)) {
     }
 }
 
+// Function to automatically deploy slash commands
+async function deployCommands() {
+    try {
+        console.log('🔄 Auto-deploying slash commands...');
+        
+        // Prepare commands array
+        const commands = [];
+        for (const [name, command] of client.commands) {
+            if ('data' in command && 'execute' in command) {
+                commands.push(command.data.toJSON());
+            }
+        }
+        
+        // Initialize REST
+        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+        
+        // Clear existing global commands first
+        console.log('🧹 Clearing existing global commands...');
+        await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: [] }
+        );
+        
+        // Deploy new commands globally
+        console.log(`🚀 Deploying ${commands.length} commands globally...`);
+        const data = await rest.put(
+            Routes.applicationCommands(process.env.CLIENT_ID),
+            { body: commands }
+        );
+        
+        console.log(`✅ Successfully deployed ${data.length} slash commands globally!`);
+        console.log('ℹ️ Commands will be available in all servers within 1 hour');
+        
+    } catch (error) {
+        console.error('❌ Auto-deploy failed:', error);
+        console.log('ℹ️ Auto-deploy skipped or failed: Missing Access');
+    }
+}
+
 // Event: Bot is ready
-client.once(Events.ClientReady, () => {
+client.once(Events.ClientReady, async () => {
     console.log(`✅ Bot is online as ${client.user.tag}!`);
     console.log(`📊 Serving ${client.guilds.cache.size} servers`);
+    
+    // Auto-deploy slash commands
+    await deployCommands();
+    
+    // Set up rotating presence
+    const presenceMessages = [
+        { type: 0, name: '/yardim | All commands' }, // Playing
+        { type: 0, name: 'Cyberpunk 2077' }, // Playing
+        { type: 2, name: 'Sagopa Kajmer ve Ceza' }, // Listening
+        { type: 3, name: 'Seni izliyor...' } // Watching
+    ];
+    
+    let presenceIndex = 0;
+    const updatePresence = () => {
+        const presence = presenceMessages[presenceIndex];
+        client.user.setPresence({
+            activities: [{
+                name: presence.name,
+                type: presence.type
+            }],
+            status: 'online'
+        });
+        console.log(`🔄 Updated presence to: ${presence.name} (${presence.type})`);
+        presenceIndex = (presenceIndex + 1) % presenceMessages.length;
+    };
+    
+    // Set initial presence immediately
+    updatePresence();
+    
+    // Also set a test presence after 5 seconds to ensure it works
+    setTimeout(() => {
+        console.log('🧪 Testing presence update...');
+        updatePresence();
+    }, 5000);
+    
+    // Rotate presence every 10 minutes
+    setInterval(updatePresence, 10 * 60 * 1000);
     
     // Initialize voice activity manager after bot is ready
     voiceManager = new VoiceActivityManager(client);
     client.voiceManager = voiceManager; // Attach to client for command access
     console.log('🎤 Voice activity tracking initialized!');
     
-    // Initialize music player
-    musicPlayer = new MusicPlayerManager(client);
-    client.musicPlayer = musicPlayer; // Attach to client for command access
-    console.log('🎵 Music player initialized!');
+    // Initialize music player (guard against duplicate init)
+    if (!client.musicPlayer) {
+        musicPlayer = new MusicPlayerManager(client);
+        client.musicPlayer = musicPlayer; // Attach to client for command access
+        console.log('🎵 Music player initialized!');
+    } else {
+        console.log('🎵 Music player already initialized, skipping re-init');
+    }
     
     // Set bot status
     client.user.setActivity('music & voice channels! 🎵🎤', { type: 'LISTENING' });
+    
+    // Auto-deploy slash commands to the guild if none are installed
+    (async () => {
+        try {
+            const guildId = process.env.GUILD_ID;
+            if (!guildId) return;
+            
+            const existing = await client.application.commands.fetch({ guildId }).catch(() => null);
+            if (!existing || existing.size === 0) {
+                const { REST, Routes } = require('discord.js');
+                const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+                const body = Array.from(client.commands.values()).map(cmd => cmd.data.toJSON());
+                await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), { body });
+                console.log(`🧩 Auto-deployed ${body.length} guild commands to ${guildId}`);
+            }
+        } catch (e) {
+            console.log('ℹ️ Auto-deploy skipped or failed:', e?.message || e);
+        }
+    })();
     
     // Set up periodic XP/coin awarding for browser login users (every minute)
     setInterval(() => {
@@ -139,8 +238,29 @@ client.on(Events.InteractionCreate, async interaction => {
                 return;
             }
             
+            // Handle Rock Paper Scissors game buttons
+            if (action === 'rps') {
+                const gamesCommand = client.commands.get('oyunlar');
+                if (gamesCommand && gamesCommand.handleRPSChoice) {
+                    const choice = customIdParts[customIdParts.length - 1]; // Last part is the choice
+                    await gamesCommand.handleRPSChoice(interaction, choice);
+                }
+                return;
+            }
+            
+            // Handle Trivia game buttons
+            if (action === 'trivia') {
+                const triviaCommand = client.commands.get('bilgi_yarismasi');
+                if (triviaCommand && triviaCommand.handleTriviaAnswer) {
+                    const isCorrect = customIdParts[customIdParts.length - 1] === 'correct';
+                    await triviaCommand.handleTriviaAnswer(interaction, isCorrect);
+                }
+                return;
+            }
+            
             const [oldAction, userId] = interaction.customId.split('_');
             const action2 = oldAction;
+            console.log(`🔘 Profile button clicked: ${action2} for user ${userId}`);
             
             if (action2 === 'refresh') {
                 // Re-execute profile command
@@ -150,8 +270,9 @@ client.on(Events.InteractionCreate, async interaction => {
                     const mockInteraction = {
                         ...interaction,
                         guild: interaction.guild,
+                        client: client,
                         options: {
-                            getUser: () => userId === interaction.user.id ? null : { id: userId }
+                            getUser: () => userId === interaction.user.id ? null : interaction.guild.members.cache.get(userId)?.user || { id: userId, username: 'Unknown User', displayAvatarURL: () => 'https://cdn.discordapp.com/embed/avatars/0.png' }
                         },
                         reply: (options) => {
                             if (!interaction.replied && !interaction.deferred) {
@@ -165,9 +286,15 @@ client.on(Events.InteractionCreate, async interaction => {
                 // Show leaderboard
                 const leaderboardCommand = client.commands.get('liderlik-tablosu');
                 if (leaderboardCommand) {
+                    // Defer the interaction first
+                    if (!interaction.replied && !interaction.deferred) {
+                        await interaction.deferReply({ ephemeral: true });
+                    }
+                    
                     const mockInteraction = {
                         ...interaction,
                         guild: interaction.guild,
+                        client: client,
                         options: {
                             getString: () => 'xp',
                             getInteger: () => 10
@@ -175,18 +302,85 @@ client.on(Events.InteractionCreate, async interaction => {
                         reply: (options) => {
                             if (!interaction.replied && !interaction.deferred) {
                                 return interaction.followUp({ ...options, ephemeral: true });
+                            } else {
+                                return interaction.editReply(options);
                             }
                         }
                     };
                     await leaderboardCommand.execute(mockInteraction);
                 }
             } else if (action2 === 'compare') {
-                // Simple comparison message
-                if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({
-                        content: '📊 **Karşılaştırma özelliği yakında!**\nBu özellik istatistiklerinizi diğer kullanıcılarla karşılaştırmanıza olanak sağlayacak.',
-                        flags: 64
-                    });
+                // Implement comparison feature
+                const profileCommand = client.commands.get('profil');
+                if (profileCommand) {
+                    try {
+                        // Get current user stats
+                        const currentUserStats = await client.voiceManager.getUserStats(interaction.user.id, interaction.guildId);
+                        if (!currentUserStats) {
+                            return interaction.reply({
+                                content: '❌ Profil bilgileriniz bulunamadı!',
+                                ephemeral: true
+                            });
+                        }
+                        
+                        // Get target user stats
+                        const targetUserStats = await client.voiceManager.getUserStats(userId, interaction.guildId);
+                        if (!targetUserStats) {
+                            return interaction.reply({
+                                content: '❌ Karşılaştırılacak kullanıcının profil bilgileri bulunamadı!',
+                                ephemeral: true
+                            });
+                        }
+                        
+                        const currentUser = interaction.guild.members.cache.get(interaction.user.id);
+                        const targetUser = interaction.guild.members.cache.get(userId);
+                        
+                        const embed = new EmbedBuilder()
+                            .setColor('#00D4AA')
+                            .setTitle('📊 İstatistik Karşılaştırması')
+                            .setDescription(`**${currentUser?.displayName || interaction.user.username}** vs **${targetUser?.displayName || 'Bilinmeyen Kullanıcı'}**`)
+                            .addFields(
+                                {
+                                    name: '🎯 Seviye',
+                                    value: `**${currentUserStats.level}** vs **${targetUserStats.level}**\n${currentUserStats.level > targetUserStats.level ? '🏆 Kazandınız!' : currentUserStats.level < targetUserStats.level ? '❌ Kaybettiniz!' : '🤝 Berabere!'}`,
+                                    inline: true
+                                },
+                                {
+                                    name: '📈 XP',
+                                    value: `**${currentUserStats.total_xp.toLocaleString()}** vs **${targetUserStats.total_xp.toLocaleString()}**\n${currentUserStats.total_xp > targetUserStats.total_xp ? '🏆 Kazandınız!' : currentUserStats.total_xp < targetUserStats.total_xp ? '❌ Kaybettiniz!' : '🤝 Berabere!'}`,
+                                    inline: true
+                                },
+                                {
+                                    name: '💰 Coin',
+                                    value: `**${currentUserStats.coins.toLocaleString()}** vs **${targetUserStats.coins.toLocaleString()}**\n${currentUserStats.coins > targetUserStats.coins ? '🏆 Kazandınız!' : currentUserStats.coins < targetUserStats.coins ? '❌ Kaybettiniz!' : '🤝 Berabere!'}`,
+                                    inline: true
+                                },
+                                {
+                                    name: '🎤 Ses Süresi',
+                                    value: `**${Math.floor(currentUserStats.voice_time_minutes / 60)}s ${currentUserStats.voice_time_minutes % 60}d** vs **${Math.floor(targetUserStats.voice_time_minutes / 60)}s ${targetUserStats.voice_time_minutes % 60}d**\n${currentUserStats.voice_time_minutes > targetUserStats.voice_time_minutes ? '🏆 Kazandınız!' : currentUserStats.voice_time_minutes < targetUserStats.voice_time_minutes ? '❌ Kaybettiniz!' : '🤝 Berabere!'}`,
+                                    inline: true
+                                },
+                                {
+                                    name: '🏆 Sıralama',
+                                    value: `**#${currentUserStats.xpRank}** vs **#${targetUserStats.xpRank}**\n${currentUserStats.xpRank < targetUserStats.xpRank ? '🏆 Kazandınız!' : currentUserStats.xpRank > targetUserStats.xpRank ? '❌ Kaybettiniz!' : '🤝 Berabere!'}`,
+                                    inline: true
+                                },
+                                {
+                                    name: '📊 Genel Sonuç',
+                                    value: `${currentUserStats.total_xp > targetUserStats.total_xp ? '🏆 Genel olarak daha iyisiniz!' : currentUserStats.total_xp < targetUserStats.total_xp ? '❌ Daha çok çalışmanız gerekiyor!' : '🤝 Eşit seviyedesiniz!'}`,
+                                    inline: true
+                                }
+                            )
+                            .setTimestamp();
+                        
+                        await interaction.reply({ embeds: [embed], ephemeral: true });
+                    } catch (error) {
+                        console.error('Error in comparison:', error);
+                        await interaction.reply({
+                            content: '❌ Karşılaştırma sırasında bir hata oluştu!',
+                            ephemeral: true
+                        });
+                    }
                 }
             } else if (action2 === 'rps') {
                 // Rock Paper Scissors has been removed
@@ -245,19 +439,6 @@ client.on(Events.InteractionCreate, async interaction => {
 client.on(Events.MessageCreate, message => {
     // Ignore messages from bots
     if (message.author.bot) return;
-    
-    // Simple ping response
-    if (message.content.toLowerCase() === 'ping') {
-        message.reply('Pong! 🏓');
-    }
-    
-    // Echo command
-    if (message.content.startsWith('!echo ')) {
-        const text = message.content.slice(6);
-        if (text.length > 0) {
-            message.channel.send(`📢 ${text}`);
-        }
-    }
     
     // Track browser login activity when user sends messages
     trackBrowserLoginActivity(message.author.id, message.guildId);
@@ -528,6 +709,7 @@ client.handleMusicControls = async (interaction, action) => {
                 if (musicCommand) {
                     const mockInteraction = {
                         ...interaction,
+                        client: client,
                         options: {
                             getSubcommand: () => 'queue'
                         },
@@ -570,7 +752,6 @@ client.handleMusicControls = async (interaction, action) => {
 
 // Help button handler
 client.handleHelpButtons = async (interaction, category) => {
-    const { EmbedBuilder } = require('discord.js');
     
     console.log(`Handling help button for category: ${category}`);
     
@@ -1135,6 +1316,30 @@ client.on(Events.GuildMemberAdd, async member => {
     console.log(`👋 ${member.user.tag} joined ${member.guild.name}`);
     
     try {
+        // Initialize new member with level 1 and 0 XP
+        await client.voiceManager?.db.updateUserStats(member.user.id, member.guild.id, 0, 0, 0);
+        console.log(`📊 Initialized ${member.user.tag} with level 1, 0 XP`);
+        
+        // Check for starting role (level 1 role) and assign it
+        const levelRoles = await client.voiceManager?.db.getLevelRoles(member.guild.id);
+        const startingRole = levelRoles?.find(role => role.level === 1);
+        
+        if (startingRole) {
+            try {
+                const role = member.guild.roles.cache.get(startingRole.role_id);
+                if (role) {
+                    await member.roles.add(role);
+                    console.log(`✅ Assigned starting role "${role.name}" to ${member.user.tag}`);
+                } else {
+                    console.log(`⚠️ Starting role ID ${startingRole.role_id} not found in guild`);
+                }
+            } catch (error) {
+                console.log(`❌ Failed to assign starting role to ${member.user.tag}:`, error.message);
+            }
+        } else {
+            console.log(`ℹ️ No starting role configured for level 1 in ${member.guild.name}`);
+        }
+        
         // Get guild settings to check for configured welcome channel
         const guildSettings = await client.voiceManager?.db.getGuildSettings(member.guild.id);
         let channel = null;
@@ -1164,6 +1369,11 @@ client.on(Events.GuildMemberAdd, async member => {
                     url: member.user.displayAvatarURL({ dynamic: true })
                 },
                 fields: [
+                    {
+                        name: '🎯 Başlangıç Durumu',
+                        value: 'Seviye 1 ile başladınız! Ses kanallarında zaman geçirerek XP kazanabilirsiniz.',
+                        inline: false
+                    },
                     {
                         name: '🎤 XP ve Coin Kazan',
                         value: 'XP ve coin kazanmaya başlamak için ses kanallarına katılın!',
