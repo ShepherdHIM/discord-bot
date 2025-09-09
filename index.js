@@ -1344,8 +1344,21 @@ client.on(Events.GuildMemberAdd, async member => {
         const guildSettings = await client.voiceManager?.db.getGuildSettings(member.guild.id);
         let channel = null;
         
-        // Use configured welcome channel if available
-        if (guildSettings?.welcome_channel_id) {
+        // First, try to use channel settings from /kanal_ayarla command
+        const settingsPath = path.join(__dirname, 'data', `settings_${member.guild.id}.json`);
+        if (fs.existsSync(settingsPath)) {
+            try {
+                const channelSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                if (channelSettings.hosgeldinChannel) {
+                    channel = member.guild.channels.cache.get(channelSettings.hosgeldinChannel);
+                }
+            } catch (error) {
+                console.error('Error reading channel settings:', error);
+            }
+        }
+        
+        // Fallback to voice manager database settings
+        if (!channel && guildSettings?.welcome_channel_id) {
             channel = member.guild.channels.cache.get(guildSettings.welcome_channel_id);
         }
         

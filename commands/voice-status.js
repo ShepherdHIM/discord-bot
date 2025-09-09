@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('ses_durumu')
+        .setName('ses-durumu')
         .setDescription('Mevcut ses aktivitesi ve kazanc durumunu goruntule'),
     
     async execute(interaction) {

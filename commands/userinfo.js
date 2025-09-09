@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('kullanici_bilgi')
+        .setName('kullanici-bilgi')
         .setDescription('Bir kullanıcı hakkında bilgi göster')
         .addUserOption(option =>
             option.setName('hedef')

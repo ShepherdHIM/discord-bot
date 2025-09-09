@@ -22,6 +22,7 @@
     "discord.js": "^14.22.1",
     "dotenv": "^16.3.1",
     "mediaplex": "^0.0.9",
+    "openai": "^5.20.0",
     "play-dl": "^1.9.7",
     "sqlite3": "^5.1.6",
     "ytdl-core": "^4.11.5"
