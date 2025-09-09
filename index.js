@@ -1351,6 +1351,7 @@ client.on(Events.GuildMemberAdd, async member => {
                 const channelSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
                 if (channelSettings.hosgeldinChannel) {
                     channel = member.guild.channels.cache.get(channelSettings.hosgeldinChannel);
+                    console.log(`📢 Using configured welcome channel: ${channel?.name || 'NOT FOUND'} (ID: ${channelSettings.hosgeldinChannel})`);
                 }
             } catch (error) {
                 console.error('Error reading channel settings:', error);

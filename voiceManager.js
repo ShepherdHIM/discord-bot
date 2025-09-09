@@ -587,8 +587,24 @@ class VoiceActivityManager {
             const guildSettings = await this.db.getGuildSettings(member.guild.id);
             let channel = null;
             
-            // Use configured level-up channel if available
-            if (guildSettings.levelup_channel_id) {
+            // First, try to use channel settings from /kanal_ayarla command
+            const fs = require('fs');
+            const path = require('path');
+            const settingsPath = path.join(__dirname, 'data', `settings_${member.guild.id}.json`);
+            if (fs.existsSync(settingsPath)) {
+                try {
+                    const channelSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+                    if (channelSettings.duyuruChannel) {
+                        channel = member.guild.channels.cache.get(channelSettings.duyuruChannel);
+                        console.log(`📢 Using configured announcement channel for level-up: ${channel?.name || 'NOT FOUND'} (ID: ${channelSettings.duyuruChannel})`);
+                    }
+                } catch (error) {
+                    console.error('Error reading channel settings:', error);
+                }
+            }
+            
+            // Fallback to voice manager database settings
+            if (!channel && guildSettings.levelup_channel_id) {
                 channel = member.guild.channels.cache.get(guildSettings.levelup_channel_id);
             }
             

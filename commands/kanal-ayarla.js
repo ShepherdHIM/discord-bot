@@ -59,6 +59,7 @@ module.exports = {
                     { name: 'Log', value: 'log' },
                     { name: 'Müzik', value: 'muzik' },
                     { name: 'Göster', value: 'goster' },
+                    { name: 'Test', value: 'test' },
                     { name: 'Temizle', value: 'temizle' }
                 ))
         .addChannelOption(option =>
@@ -102,6 +103,10 @@ module.exports = {
                     
                 case 'goster':
                     await this.showSettings(interaction, settings);
+                    break;
+                    
+                case 'test':
+                    await this.testChannelSettings(interaction, settings, guildId);
                     break;
                     
                 case 'temizle':
@@ -246,5 +251,63 @@ module.exports = {
                 flags: 64
             });
         }
+    },
+
+    async testChannelSettings(interaction, settings, guildId) {
+        const embed = new EmbedBuilder()
+            .setColor('#FFD700')
+            .setTitle('🧪 Kanal Ayarları Test')
+            .setDescription('Kanal ayarlarının nasıl çalıştığını test edin.')
+            .setTimestamp();
+
+        const channelTypes = [
+            { key: 'duyuruChannel', name: '📢 Duyuru Kanalı', emoji: '📢' },
+            { key: 'hosgeldinChannel', name: '👋 Hoşgeldin Kanalı', emoji: '👋' },
+            { key: 'logChannel', name: '📝 Log Kanalı', emoji: '📝' },
+            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' }
+        ];
+
+        let hasSettings = false;
+        let testResults = [];
+
+        for (const channelType of channelTypes) {
+            const channelId = settings[channelType.key];
+            if (channelId) {
+                const channel = interaction.guild.channels.cache.get(channelId);
+                if (channel) {
+                    // Test if bot can send messages to this channel
+                    const canSend = channel.permissionsFor(interaction.guild.members.me).has('SendMessages');
+                    testResults.push({
+                        name: channelType.name,
+                        value: `${channelType.emoji} ${channel} ${canSend ? '✅' : '❌'}`,
+                        inline: true
+                    });
+                    hasSettings = true;
+                } else {
+                    testResults.push({
+                        name: channelType.name,
+                        value: `${channelType.emoji} ❌ Kanal bulunamadı`,
+                        inline: true
+                    });
+                    hasSettings = true;
+                }
+            }
+        }
+
+        if (testResults.length > 0) {
+            embed.addFields(testResults);
+        }
+
+        if (!hasSettings) {
+            embed.setDescription('❌ Henüz hiçbir kanal ayarı yapılmamış. Test edilecek bir şey yok.');
+        } else {
+            embed.addFields({
+                name: 'ℹ️ Test Açıklaması',
+                value: '✅ = Bot bu kanala mesaj gönderebilir\n❌ = Bot bu kanala mesaj gönderemez veya kanal bulunamadı',
+                inline: false
+            });
+        }
+
+        await interaction.reply({ embeds: [embed] });
     }
 };
