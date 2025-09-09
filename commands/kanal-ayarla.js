@@ -76,13 +76,16 @@ module.exports = {
         
         // Check permissions
         if (!interaction.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: '❌ Bu komutu kullanmak için **Sunucuyu Yönet** yetkisine sahip olmalısınız!',
                 flags: 64
             });
         }
 
         try {
+            // Defer reply to prevent interaction timeout
+            await interaction.deferReply({ flags: 64 });
+            
             const settings = loadServerSettings(guildId);
 
             switch (tip) {
@@ -120,7 +123,7 @@ module.exports = {
             }
         } catch (error) {
             console.error('Kanal ayarlama hatası:', error);
-            await interaction.reply({
+            await interaction.editReply({
                 content: '❌ Kanal ayarları yapılırken bir hata oluştu!',
                 flags: 64
             });
@@ -129,7 +132,7 @@ module.exports = {
 
     async setChannel(interaction, settings, guildId, channelType, channel, displayName) {
         if (!channel) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: `❌ ${displayName} kanalı için bir kanal seçmelisiniz!`,
                 flags: 64
             });
@@ -137,7 +140,7 @@ module.exports = {
         
         // Check if bot can send messages to the channel
         if (!channel.permissionsFor(interaction.guild.members.me).has('SendMessages')) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: `❌ ${channel} kanalına mesaj gönderme yetkim yok!`,
                 flags: 64
             });
@@ -157,9 +160,9 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            await interaction.reply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
         } else {
-            await interaction.reply({
+            await interaction.editReply({
                 content: '❌ Ayar kaydedilemedi!',
                 flags: 64
             });
@@ -216,7 +219,7 @@ module.exports = {
             inline: false
         });
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
 
     async clearSettings(interaction, settings, guildId) {
@@ -244,15 +247,15 @@ module.exports = {
                     { name: '👤 Temizleyen', value: interaction.user.toString(), inline: true },
                     { name: '🕒 Tarih', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
                 );
-                await interaction.reply({ embeds: [embed] });
+                await interaction.editReply({ embeds: [embed] });
             } else {
-                await interaction.reply({
+                await interaction.editReply({
                     content: '❌ Ayarlar temizlenemedi!',
                     flags: 64
                 });
             }
         } else {
-            await interaction.reply({
+            await interaction.editReply({
                 content: '❌ Temizlenecek ayar bulunamadı!',
                 flags: 64
             });
@@ -315,12 +318,12 @@ module.exports = {
             });
         }
 
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
 
     async setShopChannel(interaction, settings, guildId, channel) {
         if (!channel) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: '❌ Dükkan kanalı için bir kanal seçmelisiniz!',
                 flags: 64
             });
@@ -329,14 +332,14 @@ module.exports = {
         // Check if bot can send messages and manage messages to the channel
         const botPermissions = channel.permissionsFor(interaction.guild.members.me);
         if (!botPermissions.has('SendMessages')) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: `❌ ${channel} kanalına mesaj gönderme yetkim yok!`,
                 flags: 64
             });
         }
         
         if (!botPermissions.has('ManageMessages')) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: `❌ ${channel} kanalında mesaj yönetme yetkim yok! (Sabitleme için gerekli)`,
                 flags: 64
             });
@@ -357,9 +360,9 @@ module.exports = {
                 )
                 .setTimestamp();
 
-            await interaction.reply({ embeds: [embed] });
+            await interaction.editReply({ embeds: [embed] });
         } else {
-            await interaction.reply({
+            await interaction.editReply({
                 content: '❌ Ayar kaydedilemedi!',
                 flags: 64
             });

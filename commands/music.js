@@ -88,7 +88,7 @@ module.exports = {
         // Check channel restriction for music commands
         const restriction = checkChannelRestriction(interaction, 'muzik');
         if (restriction.isRestricted) {
-            return interaction.reply({
+            return interaction.editReply({
                 content: restriction.message,
                 flags: 64
             });
@@ -98,7 +98,7 @@ module.exports = {
         const musicPlayer = interaction.client.musicPlayer;
         
         if (!musicPlayer) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '🎵 Müzik sistemi mevcut değil! Lütfen bir yöneticiyle iletişime geçin.', 
                 flags: 64
             });
@@ -108,7 +108,7 @@ module.exports = {
         const requiresVoiceChannel = ['cal', 'duraklat', 'gecis', 'durdur', 'ses', 'karistir', 'temizle', 'dongu', 'cikar'];
         if (requiresVoiceChannel.includes(subcommand)) {
             if (!interaction.member.voice.channel) {
-                return interaction.reply({ 
+                return interaction.editReply({ 
                     content: '🎵 Bu komutu kullanmak için bir ses kanalında olmalısınız!', 
                     flags: 64
                 });
@@ -117,7 +117,7 @@ module.exports = {
             // Check if bot is in a different voice channel
             const queue = musicPlayer.player.nodes.get(interaction.guild.id);
             if (queue && queue.connection && queue.connection.joinConfig.channelId !== interaction.member.voice.channel.id) {
-                return interaction.reply({ 
+                return interaction.editReply({ 
                     content: '🎵 Botla aynı ses kanalında olmalısınız!', 
                     flags: 64
                 });
@@ -125,6 +125,9 @@ module.exports = {
         }
         
         try {
+            // Defer reply for all music commands to prevent interaction timeout
+            await interaction.deferReply();
+            
             switch (subcommand) {
                 case 'cal':
                     const query = interaction.options.getString('sarki');
@@ -186,18 +189,14 @@ module.exports = {
             console.error(`Müzik komutu çalıştırılırken hata oluştu ${subcommand}:`, error);
             const errorMessage = 'Bu müzik komutu çalıştırılırken bir hata oluştu!';
             
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: errorMessage, flags: 64 });
-            } else {
-                await interaction.reply({ content: errorMessage, flags: 64 });
-            }
+            await interaction.editReply({ content: errorMessage, flags: 64 });
         }
     },
     
     async showNowPlayingWithControls(interaction, musicPlayer) {
         const queue = musicPlayer.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.node.isPlaying()) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '❌ No music is currently playing!', 
                 flags: 64 
             });
@@ -253,13 +252,13 @@ module.exports = {
                     .setStyle(ButtonStyle.Secondary)
             );
         
-        await interaction.reply({ embeds: [embed], components: [row] });
+        await interaction.editReply({ embeds: [embed], components: [row] });
     },
     
     async shuffleQueue(interaction, musicPlayer) {
         const queue = musicPlayer.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.tracks.size) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '❌ The queue is empty!', 
                 flags: 64 
             });
@@ -274,13 +273,13 @@ module.exports = {
             .addFields({ name: '👤 Shuffled by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
     
     async clearQueue(interaction, musicPlayer) {
         const queue = musicPlayer.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.tracks.size) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '❌ The queue is empty!', 
                 flags: 64 
             });
@@ -296,13 +295,13 @@ module.exports = {
             .addFields({ name: '👤 Cleared by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
     
     async setLoopMode(interaction, musicPlayer, mode) {
         const queue = musicPlayer.player.nodes.get(interaction.guild.id);
         if (!queue) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '❌ No music is currently playing!', 
                 flags: 64 
             });
@@ -324,20 +323,20 @@ module.exports = {
             .addFields({ name: '👤 Changed by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
     
     async removeTrack(interaction, musicPlayer, position) {
         const queue = musicPlayer.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.tracks.size) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: '❌ The queue is empty!', 
                 flags: 64 
             });
         }
         
         if (position > queue.tracks.size) {
-            return interaction.reply({ 
+            return interaction.editReply({ 
                 content: `❌ There are only ${queue.tracks.size} track${queue.tracks.size !== 1 ? 's' : ''} in the queue!`, 
                 flags: 64 
             });
@@ -356,13 +355,13 @@ module.exports = {
             )
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
     
     async searchMusic(interaction, musicPlayer) {
         // This would implement a search interface with multiple results
         // For now, we'll redirect to the play command
-        await interaction.reply({ 
+        await interaction.editReply({ 
             content: '🔍 **Search feature coming soon!**\nFor now, use `/music play` with your search terms.', 
             flags: 64 
         });
@@ -370,7 +369,7 @@ module.exports = {
     
     async getLyrics(interaction, musicPlayer) {
         // This would implement lyrics fetching
-        await interaction.reply({ 
+        await interaction.editReply({ 
             content: '🎤 **Lyrics feature coming soon!**\nWe\'re working on integrating lyrics for the current track.', 
             flags: 64 
         });
@@ -409,7 +408,7 @@ module.exports = {
             });
         }
         
-        await interaction.reply({ embeds: [embed] });
+        await interaction.editReply({ embeds: [embed] });
     },
     
     getLoopModeText(mode) {

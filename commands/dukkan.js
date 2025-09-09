@@ -10,7 +10,7 @@ module.exports = {
             await interaction.deferReply({ flags: 64 });
             
             // Get shop channel from settings
-            const shopChannel = await this.getShopChannel(interaction.guild.id);
+            const shopChannel = await this.getShopChannel(interaction.guild.id, interaction);
             
             if (!shopChannel) {
                 await interaction.editReply({
@@ -58,7 +58,7 @@ module.exports = {
         }
     },
 
-    async getShopChannel(guildId) {
+    async getShopChannel(guildId, interaction) {
         try {
             const fs = require('fs');
             const path = require('path');
@@ -76,7 +76,7 @@ module.exports = {
             }
             
             // Get the channel from the guild
-            const guild = require('../index.js').client.guilds.cache.get(guildId);
+            const guild = interaction.client.guilds.cache.get(guildId);
             if (!guild) {
                 return null;
             }

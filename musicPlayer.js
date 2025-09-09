@@ -128,11 +128,8 @@ class MusicPlayerManager {
     // Helper function to safely reply to interactions
     async safeReply(interaction, content, options = {}) {
         try {
-            if (interaction.replied || interaction.deferred) {
-                return await interaction.editReply(content);
-            } else {
-                return await interaction.reply({ content, ...options });
-            }
+            // Since we defer in the main command, always use editReply
+            return await interaction.editReply(content);
         } catch (error) {
             console.error('Error in safeReply:', error);
             // Try to send a follow-up message if all else fails
@@ -147,11 +144,8 @@ class MusicPlayerManager {
     // Helper function to safely reply with embeds
     async safeReplyEmbed(interaction, embed, options = {}) {
         try {
-            if (interaction.replied || interaction.deferred) {
-                return await interaction.editReply({ embeds: [embed], ...options });
-            } else {
-                return await interaction.reply({ embeds: [embed], ...options });
-            }
+            // Since we defer in the main command, always use editReply
+            return await interaction.editReply({ embeds: [embed], ...options });
         } catch (error) {
             console.error('Error in safeReplyEmbed:', error);
             // Try to send a follow-up message if all else fails
@@ -170,8 +164,6 @@ class MusicPlayerManager {
         }
         
         try {
-            await interaction.deferReply();
-            
             console.log(`🎵 Searching for: ${query}`);
             
             const searchResult = await this.player.search(query, {
