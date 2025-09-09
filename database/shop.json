@@ -1,0 +1,77 @@
+{
+  "products": {
+    "gizemli-kutu": {
+      "name": "🎁 Gizemli Kutu",
+      "price": 200,
+      "currency": "coins",
+      "description": "Rastgele ödüller içeren gizemli kutu!",
+      "rewards": [
+        { "type": "xp", "amount": 50, "message": "🎖️ 50 XP kazandın!" },
+        { "type": "coins", "amount": 100, "message": "💰 100 Coin kazandın!" },
+        { "type": "coins", "amount": 250, "message": "🪙 250 Coin kazandın! (Nadir!)" },
+        { "type": "xp-boost", "duration": 3600000, "message": "🚀 1 Saatlik XP Boost aktif!" },
+        { "type": "extra-spin", "amount": 1, "message": "🎡 Ekstra Çark Çevir Hakkı kazandın!" }
+      ]
+    },
+    "xp-boost": {
+      "name": "🚀 XP Boost",
+      "price": 500,
+      "currency": "coins",
+      "description": "1 saat boyunca %50 daha fazla XP kazan!",
+      "rewards": [
+        { "type": "xp-boost", "duration": 3600000, "message": "🚀 1 Saatlik XP Boost aktif!" }
+      ]
+    },
+    "coin-carpani": {
+      "name": "🪙 Coin Çarpanı",
+      "price": 300,
+      "currency": "coins",
+      "description": "1 saat boyunca %2-3 coin bonusu kazan!",
+      "rewards": [
+        { "type": "coin-multiplier", "duration": 3600000, "multiplier": 0.02, "message": "🪙 1 Saatlik %2 Coin Bonus aktif!" },
+        { "type": "coin-multiplier", "duration": 3600000, "multiplier": 0.03, "message": "🪙 1 Saatlik %3 Coin Bonus aktif!" }
+      ]
+    },
+    "cark-cevir": {
+      "name": "🎡 Çark Çevir",
+      "price": 150,
+      "currency": "coins",
+      "description": "Şanslı çarkı çevir ve rastgele ödül kazan!",
+      "rewards": [
+        { "type": "coins", "amount": 50, "message": "💰 50 Coin kazandın!" },
+        { "type": "coins", "amount": 100, "message": "💰 100 Coin kazandın!" },
+        { "type": "coins", "amount": 200, "message": "💰 200 Coin kazandın!" },
+        { "type": "coins", "amount": 300, "message": "💰 300 Coin kazandın!" },
+        { "type": "coins", "amount": 500, "message": "💰 500 Coin kazandın!" },
+        { "type": "xp", "amount": 100, "message": "🎖️ 100 XP kazandın!" },
+        { "type": "xp-boost", "duration": 1800000, "message": "🚀 30 Dakikalık XP Boost aktif!" },
+        { "type": "free-box", "message": "🎁 Bedava Gizemli Kutu kazandın!" },
+        { "type": "nothing", "message": "❌ Boş! Şanssızsın 😅" }
+      ]
+    },
+    "kart-cekme": {
+      "name": "🃏 Kart Çekme",
+      "price": 250,
+      "currency": "coins",
+      "description": "Rastgele kart çek ve XP veya Coin kazan!",
+      "rewards": [
+        { "type": "xp", "amount": 100, "message": "🎖️ 100 XP kazandın!" },
+        { "type": "xp", "amount": 200, "message": "🎖️ 200 XP kazandın!" },
+        { "type": "xp", "amount": 300, "message": "🎖️ 300 XP kazandın!" },
+        { "type": "xp", "amount": 400, "message": "🎖️ 400 XP kazandın!" },
+        { "type": "xp", "amount": 500, "message": "🎖️ 500 XP kazandın!" },
+        { "type": "coins", "amount": 50, "message": "💰 50 Coin kazandın!" },
+        { "type": "coins", "amount": 100, "message": "💰 100 Coin kazandın!" },
+        { "type": "coins", "amount": 150, "message": "💰 150 Coin kazandın!" },
+        { "type": "coins", "amount": 200, "message": "💰 200 Coin kazandın!" }
+      ]
+    }
+  },
+  "settings": {
+    "currency_symbol": "🪙",
+    "xp_symbol": "🎖️",
+    "shop_title": "🎁 Discord Bot Dükkanı",
+    "shop_description": "Hoş geldiniz! Profesyonel Discord Bot dükkanımıza göz atın.",
+    "footer_text": "Discord Bot Dükkanı • Profesyonel Hizmet • Güvenli Alışveriş"
+  }
+}
