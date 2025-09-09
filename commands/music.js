@@ -96,8 +96,6 @@ module.exports = {
         
         // Get music player manager
         const musicPlayer = interaction.client.musicPlayer;
-        console.log('🎵 Music player check:', musicPlayer ? 'Found' : 'Not found');
-        console.log('🎵 Client musicPlayer property:', interaction.client.musicPlayer ? 'Exists' : 'Missing');
         
         if (!musicPlayer) {
             return interaction.reply({ 

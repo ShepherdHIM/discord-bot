@@ -63,29 +63,39 @@ async function deployCommands() {
             }
         }
         
-        // Initialize REST
-        const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+        // Initialize REST with timeout
+        const rest = new REST({ 
+            version: '10',
+            timeout: 10000 // 10 second timeout
+        }).setToken(process.env.DISCORD_TOKEN);
         
         // Clear existing global commands first
         console.log('🧹 Clearing existing global commands...');
-        await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: [] }
-        );
+        await Promise.race([
+            rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: [] }
+            ),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+        ]);
         
         // Deploy new commands globally
         console.log(`🚀 Deploying ${commands.length} commands globally...`);
-        const data = await rest.put(
-            Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: commands }
-        );
+        const data = await Promise.race([
+            rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: commands }
+            ),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
+        ]);
         
         console.log(`✅ Successfully deployed ${data.length} slash commands globally!`);
         console.log('ℹ️ Commands will be available in all servers within 1 hour');
         
     } catch (error) {
-        console.error('❌ Auto-deploy failed:', error);
-        console.log('ℹ️ Auto-deploy skipped or failed: Missing Access');
+        console.error('❌ Auto-deploy failed:', error.message);
+        console.log('ℹ️ Auto-deploy skipped or failed: Missing Access or Timeout');
+        console.log('ℹ️ Bot will continue running without auto-deploy');
     }
 }
 
@@ -94,8 +104,11 @@ client.once(Events.ClientReady, async () => {
     console.log(`✅ Bot is online as ${client.user.tag}!`);
     console.log(`📊 Serving ${client.guilds.cache.size} servers`);
     
-    // Auto-deploy slash commands
-    await deployCommands();
+    // Auto-deploy slash commands (non-blocking)
+    deployCommands().catch(error => {
+        console.error('❌ Command deployment failed:', error.message);
+        console.log('ℹ️ Bot will continue running without auto-deploy');
+    });
     
     // Set up rotating presence
     const presenceMessages = [
@@ -142,9 +155,18 @@ client.once(Events.ClientReady, async () => {
     
     // Initialize music player (guard against duplicate init)
     if (!client.musicPlayer) {
-        musicPlayer = new MusicPlayerManager(client);
-        client.musicPlayer = musicPlayer; // Attach to client for command access
-        console.log('🎵 Music player initialized!');
+        try {
+            console.log('🎵 Initializing music player...');
+            musicPlayer = new MusicPlayerManager(client);
+            client.musicPlayer = musicPlayer; // Attach to client for command access
+            console.log('🎵 Music player initialized successfully!');
+            console.log('🎵 Music player attached to client:', !!client.musicPlayer);
+        } catch (error) {
+            console.error('❌ Music player initialization failed:', error.message);
+            console.log('🎵 Music player will not be available');
+            // Set a dummy music player to prevent crashes
+            client.musicPlayer = null;
+        }
     } else {
         console.log('🎵 Music player already initialized, skipping re-init');
     }
