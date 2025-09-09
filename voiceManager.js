@@ -361,6 +361,12 @@ class VoiceActivityManager {
                 // Fallback to fixed rate if no ranges configured
                 earnedXP = guildSettings.xp_per_minute * (guildSettings.xp_interval_minutes || 1);
             }
+            
+            // Apply XP boost if active
+            if (this.hasActiveXPBoost(userId, guildId)) {
+                earnedXP = Math.floor(earnedXP * 1.5); // 50% boost
+            }
+            
             session.lastXPReward = now;
         }
         
@@ -374,6 +380,13 @@ class VoiceActivityManager {
                 // Fallback to fixed rate if no ranges configured
                 earnedCoins = guildSettings.coins_per_minute * (guildSettings.coin_interval_minutes || 1);
             }
+            
+            // Apply coin multiplier if active
+            const coinMultiplier = this.getCoinMultiplier(userId, guildId);
+            if (coinMultiplier > 0) {
+                earnedCoins = Math.floor(earnedCoins * (1 + coinMultiplier));
+            }
+            
             session.lastCoinReward = now;
         }
         
@@ -670,6 +683,51 @@ class VoiceActivityManager {
             xpRank,
             coinRank
         };
+    }
+    
+    // Get user data for shop system
+    getUserData(guildId, userId) {
+        const user = this.db.users.get(`${userId}-${guildId}`);
+        if (!user) {
+            // Create new user if doesn't exist
+            const newUser = {
+                total_xp: 0,
+                coins: 0,
+                voice_time_minutes: 0,
+                xpBoost: null,
+                coinMultiplier: null,
+                extraSpins: 0
+            };
+            this.db.users.set(`${userId}-${guildId}`, newUser);
+            return newUser;
+        }
+        return user;
+    }
+    
+    // Save user data for shop system
+    saveUserData(guildId, userId, userData) {
+        this.db.users.set(`${userId}-${guildId}`, userData);
+    }
+    
+    // Check if user has active XP boost
+    hasActiveXPBoost(userId, guildId) {
+        const user = this.getUserData(guildId, userId);
+        if (!user.xpBoost) return false;
+        return Date.now() < user.xpBoost;
+    }
+    
+    // Check if user has active coin multiplier
+    hasActiveCoinMultiplier(userId, guildId) {
+        const user = this.getUserData(guildId, userId);
+        if (!user.coinMultiplier) return false;
+        return Date.now() < user.coinMultiplier.expires;
+    }
+    
+    // Get coin multiplier value
+    getCoinMultiplier(userId, guildId) {
+        const user = this.getUserData(guildId, userId);
+        if (!user.coinMultiplier || Date.now() >= user.coinMultiplier.expires) return 0;
+        return user.coinMultiplier.multiplier;
     }
     
     // Cleanup method

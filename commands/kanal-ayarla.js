@@ -58,6 +58,7 @@ module.exports = {
                     { name: 'Hoşgeldin', value: 'hosgeldin' },
                     { name: 'Log', value: 'log' },
                     { name: 'Müzik', value: 'muzik' },
+                    { name: 'Dükkan', value: 'dukkan' },
                     { name: 'Göster', value: 'goster' },
                     { name: 'Test', value: 'test' },
                     { name: 'Temizle', value: 'temizle' }
@@ -99,6 +100,10 @@ module.exports = {
                     
                 case 'muzik':
                     await this.setChannel(interaction, settings, guildId, 'muzik', channel, 'Müzik');
+                    break;
+                    
+                case 'dukkan':
+                    await this.setShopChannel(interaction, settings, guildId, channel);
                     break;
                     
                 case 'goster':
@@ -173,7 +178,8 @@ module.exports = {
             { key: 'duyuruChannel', name: '📢 Duyuru Kanalı', emoji: '📢' },
             { key: 'hosgeldinChannel', name: '👋 Hoşgeldin Kanalı', emoji: '👋' },
             { key: 'logChannel', name: '📝 Log Kanalı', emoji: '📝' },
-            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' }
+            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' },
+            { key: 'dukkanChannel', name: '🛒 Dükkan Kanalı', emoji: '🛒' }
         ];
 
         let hasSettings = false;
@@ -221,7 +227,7 @@ module.exports = {
             .setTimestamp();
 
         // Clear all channel settings
-        const channelTypes = ['duyuruChannel', 'hosgeldinChannel', 'logChannel', 'muzikChannel'];
+        const channelTypes = ['duyuruChannel', 'hosgeldinChannel', 'logChannel', 'muzikChannel', 'dukkanChannel'];
         let clearedCount = 0;
 
         for (const channelType of channelTypes) {
@@ -264,7 +270,8 @@ module.exports = {
             { key: 'duyuruChannel', name: '📢 Duyuru Kanalı', emoji: '📢' },
             { key: 'hosgeldinChannel', name: '👋 Hoşgeldin Kanalı', emoji: '👋' },
             { key: 'logChannel', name: '📝 Log Kanalı', emoji: '📝' },
-            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' }
+            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' },
+            { key: 'dukkanChannel', name: '🛒 Dükkan Kanalı', emoji: '🛒' }
         ];
 
         let hasSettings = false;
@@ -309,5 +316,157 @@ module.exports = {
         }
 
         await interaction.reply({ embeds: [embed] });
+    },
+
+    async setShopChannel(interaction, settings, guildId, channel) {
+        if (!channel) {
+            return interaction.reply({
+                content: '❌ Dükkan kanalı için bir kanal seçmelisiniz!',
+                flags: 64
+            });
+        }
+        
+        // Check if bot can send messages and manage messages to the channel
+        const botPermissions = channel.permissionsFor(interaction.guild.members.me);
+        if (!botPermissions.has('SendMessages')) {
+            return interaction.reply({
+                content: `❌ ${channel} kanalına mesaj gönderme yetkim yok!`,
+                flags: 64
+            });
+        }
+        
+        if (!botPermissions.has('ManageMessages')) {
+            return interaction.reply({
+                content: `❌ ${channel} kanalında mesaj yönetme yetkim yok! (Sabitleme için gerekli)`,
+                flags: 64
+            });
+        }
+
+        settings.dukkanChannel = channel.id;
+        
+        if (saveServerSettings(guildId, settings)) {
+            // Create and send shop embed
+            const shopEmbed = this.createShopEmbed();
+            
+            try {
+                const shopMessage = await channel.send({ embeds: [shopEmbed] });
+                
+                // Pin the shop message
+                await shopMessage.pin();
+                
+                // Store the pinned message ID for future updates
+                settings.dukkanMessageId = shopMessage.id;
+                saveServerSettings(guildId, settings);
+                
+                const embed = new EmbedBuilder()
+                    .setColor('#00FF00')
+                    .setTitle('✅ Dükkan Kanalı Ayarlandı')
+                    .setDescription('Dükkan kanalı başarıyla ayarlandı ve dükkan embed\'i gönderildi.')
+                    .addFields(
+                        { name: '🛒 Dükkan Kanalı', value: `${channel}`, inline: true },
+                        { name: '📌 Durum', value: '✅ Sabitlendi', inline: true },
+                        { name: '👤 Ayarı Yapan', value: interaction.user.toString(), inline: true },
+                        { name: '🕒 Tarih', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                    )
+                    .setTimestamp();
+
+                await interaction.reply({ embeds: [embed] });
+                
+            } catch (error) {
+                console.error('Shop embed gönderme hatası:', error);
+                await interaction.reply({
+                    content: '❌ Dükkan embed\'i gönderilemedi!',
+                    flags: 64
+                });
+            }
+        } else {
+            await interaction.reply({
+                content: '❌ Ayar kaydedilemedi!',
+                flags: 64
+            });
+        }
+    },
+
+    createShopEmbed() {
+        const embed = new EmbedBuilder()
+            .setColor('#FFD700')
+            .setTitle('🛒 Discord Bot Dükkanı')
+            .setDescription('Sunucumuzda kullanabileceğiniz özel ürünler ve avantajlar!')
+            .setThumbnail('https://cdn.discordapp.com/emojis/1234567890123456789.png') // Bot avatar or shop icon
+            .setTimestamp();
+
+        // Roles Category
+        embed.addFields({
+            name: '🎭 Roller',
+            value: [
+                '**VIP Üye** - 1000 🪙',
+                '• Özel VIP rolü',
+                '• Özel kanallara erişim',
+                '• Öncelikli destek',
+                '',
+                '**Premium Üye** - 2000 🪙',
+                '• Premium rolü',
+                '• Tüm VIP avantajları',
+                '• Özel komutlar',
+                '',
+                '**Elite Üye** - 5000 🪙',
+                '• Elite rolü',
+                '• Tüm premium avantajları',
+                '• Özel etkinlikler'
+            ].join('\n'),
+            inline: true
+        });
+
+        // Badges Category
+        embed.addFields({
+            name: '🏆 Rozetler',
+            value: [
+                '**Aktif Üye** - 500 🪙',
+                '• Aktif üye rozeti',
+                '• Özel profil görünümü',
+                '',
+                '**Katkıda Bulunan** - 1000 🪙',
+                '• Katkı rozeti',
+                '• Topluluk tanınması',
+                '',
+                '**Efsane** - 3000 🪙',
+                '• Efsane rozeti',
+                '• Özel profil çerçevesi'
+            ].join('\n'),
+            inline: true
+        });
+
+        // Special Privileges Category
+        embed.addFields({
+            name: '⭐ Özel Ayrıcalıklar',
+            value: [
+                '**XP Boost** - 500 🪙',
+                '• 1 saat %50 fazla XP',
+                '',
+                '**Coin Çarpanı** - 300 🪙',
+                '• 1 saat %2-3 coin bonusu',
+                '',
+                '**Özel Renk** - 800 🪙',
+                '• Özel isim rengi',
+                '',
+                '**Özel Emoji** - 1200 🪙',
+                '• Kişisel emoji kullanımı'
+            ].join('\n'),
+            inline: true
+        });
+
+        embed.addFields({
+            name: '💡 Nasıl Satın Alınır?',
+            value: '`/dükkan al` komutunu kullanarak istediğiniz ürünü satın alabilirsiniz.',
+            inline: false
+        });
+
+        embed.addFields({
+            name: '💰 Coin Kazanma',
+            value: 'Sesli kanallarda vakit geçirerek, oyunlar oynayarak ve etkinliklere katılarak coin kazanabilirsiniz.',
+            inline: false
+        });
+
+        return embed;
     }
 };

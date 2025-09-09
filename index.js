@@ -106,26 +106,30 @@ client.once(Events.ClientReady, async () => {
     ];
     
     let presenceIndex = 0;
-    const updatePresence = () => {
-        const presence = presenceMessages[presenceIndex];
-        client.user.setPresence({
-            activities: [{
-                name: presence.name,
-                type: presence.type
-            }],
-            status: 'online'
-        });
-        console.log(`🔄 Updated presence to: ${presence.name} (${presence.type})`);
-        presenceIndex = (presenceIndex + 1) % presenceMessages.length;
+    const updatePresence = async () => {
+        try {
+            const presence = presenceMessages[presenceIndex];
+            await client.user.setPresence({
+                activities: [{
+                    name: presence.name,
+                    type: presence.type
+                }],
+                status: 'online'
+            });
+            console.log(`🔄 Updated presence to: ${presence.name} (${presence.type})`);
+            presenceIndex = (presenceIndex + 1) % presenceMessages.length;
+        } catch (error) {
+            console.error('❌ Error updating presence:', error);
+        }
     };
     
     // Set initial presence immediately
-    updatePresence();
+    await updatePresence();
     
     // Also set a test presence after 5 seconds to ensure it works
-    setTimeout(() => {
+    setTimeout(async () => {
         console.log('🧪 Testing presence update...');
-        updatePresence();
+        await updatePresence();
     }, 5000);
     
     // Rotate presence every 10 minutes
@@ -145,25 +149,35 @@ client.once(Events.ClientReady, async () => {
         console.log('🎵 Music player already initialized, skipping re-init');
     }
     
-    // Set bot status
-    client.user.setActivity('music & voice channels! 🎵🎤', { type: 'LISTENING' });
+    // Bot status is handled by the rotating presence system above
     
     // Auto-deploy slash commands to the guild if none are installed
     (async () => {
         try {
             const guildId = process.env.GUILD_ID;
-            if (!guildId) return;
+            if (!guildId) {
+                console.log('⚠️ GUILD_ID not set, skipping guild command deployment');
+                return;
+            }
             
+            console.log(`🔍 Checking guild commands for guild ${guildId}...`);
             const existing = await client.application.commands.fetch({ guildId }).catch(() => null);
+            
             if (!existing || existing.size === 0) {
+                console.log('🚀 No guild commands found, deploying...');
                 const { REST, Routes } = require('discord.js');
                 const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
                 const body = Array.from(client.commands.values()).map(cmd => cmd.data.toJSON());
+                
                 await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), { body });
-                console.log(`🧩 Auto-deployed ${body.length} guild commands to ${guildId}`);
+                console.log(`✅ Auto-deployed ${body.length} guild commands to ${guildId}`);
+                console.log('⚡ Guild commands are now available instantly!');
+            } else {
+                console.log(`✅ Found ${existing.size} existing guild commands`);
             }
         } catch (e) {
-            console.log('ℹ️ Auto-deploy skipped or failed:', e?.message || e);
+            console.log('⚠️ Auto-deploy failed:', e?.message || e);
+            console.log('💡 Run "node deploy-commands.js" manually to deploy commands');
         }
     })();
     

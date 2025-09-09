@@ -52,9 +52,10 @@ module.exports = {
                 embeds: [embed]
             });
 
-            // Send confirmation to the user
+            // Send confirmation to the user with channel info
+            const channelMention = kanal.id === interaction.channel.id ? 'bu kanala' : `#${kanal.name} kanalına`;
             await interaction.reply({
-                content: '✅ Duyuru başarıyla gönderildi.',
+                content: `✅ Duyuru başarıyla ${channelMention} gönderildi.`,
                 ephemeral: true
             });
 

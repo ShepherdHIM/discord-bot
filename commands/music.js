@@ -96,10 +96,13 @@ module.exports = {
         
         // Get music player manager
         const musicPlayer = interaction.client.musicPlayer;
+        console.log('🎵 Music player check:', musicPlayer ? 'Found' : 'Not found');
+        console.log('🎵 Client musicPlayer property:', interaction.client.musicPlayer ? 'Exists' : 'Missing');
+        
         if (!musicPlayer) {
             return interaction.reply({ 
                 content: '🎵 Müzik sistemi mevcut değil! Lütfen bir yöneticiyle iletişime geçin.', 
-                ephemeral: true 
+                flags: 64
             });
         }
         
@@ -109,7 +112,7 @@ module.exports = {
             if (!interaction.member.voice.channel) {
                 return interaction.reply({ 
                     content: '🎵 Bu komutu kullanmak için bir ses kanalında olmalısınız!', 
-                    ephemeral: true 
+                    flags: 64
                 });
             }
             
@@ -118,7 +121,7 @@ module.exports = {
             if (queue && queue.connection && queue.connection.joinConfig.channelId !== interaction.member.voice.channel.id) {
                 return interaction.reply({ 
                     content: '🎵 Botla aynı ses kanalında olmalısınız!', 
-                    ephemeral: true 
+                    flags: 64
                 });
             }
         }
@@ -186,9 +189,9 @@ module.exports = {
             const errorMessage = 'Bu müzik komutu çalıştırılırken bir hata oluştu!';
             
             if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({ content: errorMessage, ephemeral: true });
+                await interaction.followUp({ content: errorMessage, flags: 64 });
             } else {
-                await interaction.reply({ content: errorMessage, ephemeral: true });
+                await interaction.reply({ content: errorMessage, flags: 64 });
             }
         }
     },
@@ -198,7 +201,7 @@ module.exports = {
         if (!queue || !queue.node.isPlaying()) {
             return interaction.reply({ 
                 content: '❌ No music is currently playing!', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -260,7 +263,7 @@ module.exports = {
         if (!queue || !queue.tracks.size) {
             return interaction.reply({ 
                 content: '❌ The queue is empty!', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -281,7 +284,7 @@ module.exports = {
         if (!queue || !queue.tracks.size) {
             return interaction.reply({ 
                 content: '❌ The queue is empty!', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -303,7 +306,7 @@ module.exports = {
         if (!queue) {
             return interaction.reply({ 
                 content: '❌ No music is currently playing!', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -331,14 +334,14 @@ module.exports = {
         if (!queue || !queue.tracks.size) {
             return interaction.reply({ 
                 content: '❌ The queue is empty!', 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
         if (position > queue.tracks.size) {
             return interaction.reply({ 
                 content: `❌ There are only ${queue.tracks.size} track${queue.tracks.size !== 1 ? 's' : ''} in the queue!`, 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -363,7 +366,7 @@ module.exports = {
         // For now, we'll redirect to the play command
         await interaction.reply({ 
             content: '🔍 **Search feature coming soon!**\nFor now, use `/music play` with your search terms.', 
-            ephemeral: true 
+            flags: 64 
         });
     },
     
@@ -371,7 +374,7 @@ module.exports = {
         // This would implement lyrics fetching
         await interaction.reply({ 
             content: '🎤 **Lyrics feature coming soon!**\nWe\'re working on integrating lyrics for the current track.', 
-            ephemeral: true 
+            flags: 64 
         });
     },
     
