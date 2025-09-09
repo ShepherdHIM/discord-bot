@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('ses_ayarlari')
         .setDescription('Ses aktivitesi izleme ayarlarını yapılandır')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('goster')

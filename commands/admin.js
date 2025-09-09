@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('admin')
         .setDescription('Yöneticiler için kapsamlı yönetim komutları')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('xp-ver')

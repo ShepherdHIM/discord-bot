@@ -48,7 +48,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('kanal_ayarla')
         .setDescription('Sunucuya özel kanal ayarlarını yapılandır')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option =>
             option.setName('tip')
                 .setDescription('Kanal tipi')
@@ -345,40 +345,19 @@ module.exports = {
         settings.dukkanChannel = channel.id;
         
         if (saveServerSettings(guildId, settings)) {
-            // Create and send shop embed
-            const shopEmbed = this.createShopEmbed();
-            
-            try {
-                const shopMessage = await channel.send({ embeds: [shopEmbed] });
-                
-                // Pin the shop message
-                await shopMessage.pin();
-                
-                // Store the pinned message ID for future updates
-                settings.dukkanMessageId = shopMessage.id;
-                saveServerSettings(guildId, settings);
-                
-                const embed = new EmbedBuilder()
-                    .setColor('#00FF00')
-                    .setTitle('✅ Dükkan Kanalı Ayarlandı')
-                    .setDescription('Dükkan kanalı başarıyla ayarlandı ve dükkan embed\'i gönderildi.')
-                    .addFields(
-                        { name: '🛒 Dükkan Kanalı', value: `${channel}`, inline: true },
-                        { name: '📌 Durum', value: '✅ Sabitlendi', inline: true },
-                        { name: '👤 Ayarı Yapan', value: interaction.user.toString(), inline: true },
-                        { name: '🕒 Tarih', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
-                    )
-                    .setTimestamp();
+            const embed = new EmbedBuilder()
+                .setColor('#00FF00')
+                .setTitle('✅ Dükkan Kanalı Kaydedildi')
+                .setDescription('Dükkan kanalı başarıyla kaydedildi.')
+                .addFields(
+                    { name: '🛒 Dükkan Kanalı', value: `${channel}`, inline: true },
+                    { name: '📝 Not', value: 'Dükkan embed\'ini görmek için `/dükkan` komutunu kullanın.', inline: false },
+                    { name: '👤 Ayarı Yapan', value: interaction.user.toString(), inline: true },
+                    { name: '🕒 Tarih', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }
+                )
+                .setTimestamp();
 
-                await interaction.reply({ embeds: [embed] });
-                
-            } catch (error) {
-                console.error('Shop embed gönderme hatası:', error);
-                await interaction.reply({
-                    content: '❌ Dükkan embed\'i gönderilemedi!',
-                    flags: 64
-                });
-            }
+            await interaction.reply({ embeds: [embed] });
         } else {
             await interaction.reply({
                 content: '❌ Ayar kaydedilemedi!',

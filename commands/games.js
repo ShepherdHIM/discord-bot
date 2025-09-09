@@ -126,7 +126,7 @@ module.exports = {
             if (!userStats) {
                 return interaction.reply({ 
                     content: '🎮 Önce biraz XP kazanmanız gerekiyor! Oyunlar için coin kazanmaya başlamak için bir ses kanalına katılın!', 
-                    ephemeral: true 
+                    flags: 64 
                 });
             }
         
@@ -158,7 +158,7 @@ module.exports = {
             default:
                 await interaction.reply({ 
                     content: '❌ Bilinmeyen oyun komutu!', 
-                    ephemeral: true 
+                    flags: 64 
                 });
                 break;
         }
@@ -170,7 +170,7 @@ module.exports = {
             if (!interaction.replied) {
                 await interaction.reply({
                     content: '❌ Oyun komutu çalıştırılırken bir hata oluştu. Lütfen tekrar deneyin.',
-                    ephemeral: true
+                    flags: 64
                 });
             } else {
                 console.log('Interaction already replied to, not sending error response');
@@ -190,7 +190,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({ 
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -232,7 +232,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({ 
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -310,7 +310,7 @@ module.exports = {
             
             return interaction.reply({
                 content: `⏰ Günlük bonusunuzu bugün zaten aldınız! <t:${Math.floor(tomorrow.getTime() / 1000)}:R> tekrar gelin`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -374,7 +374,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({ 
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -419,7 +419,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({ 
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`, 
-                ephemeral: true 
+                flags: 64 
             });
         }
         
@@ -499,7 +499,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({ 
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -507,7 +507,7 @@ module.exports = {
         if (betType === 'number' && (number === null || number === undefined)) {
             return interaction.reply({
                 content: '❌ Sayı bahsi için bir sayı belirtmelisiniz (0-36)!',
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -614,7 +614,7 @@ module.exports = {
         if (opponent.id === interaction.user.id) {
             return interaction.reply({
                 content: '❌ Kendinizle oynayamazsınız! Başka birini seçin.',
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -623,7 +623,7 @@ module.exports = {
         if (userStats.coins < bet) {
             return interaction.reply({
                 content: `💸 Yeterli coininiz yok! ${userStats.coins} coininiz var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -632,7 +632,7 @@ module.exports = {
         if (!opponentStats) {
             return interaction.reply({
                 content: `❌ ${opponent.username} henüz bot sistemine kayıtlı değil! Önce bir ses kanalına katılması gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -640,7 +640,7 @@ module.exports = {
         if (opponentStats.coins < bet) {
             return interaction.reply({
                 content: `❌ ${opponent.username} yeterli coine sahip değil! ${opponentStats.coins} coini var ama ${bet} coin gerekiyor.`,
-                ephemeral: true
+                flags: 64
             });
         }
         
@@ -804,7 +804,7 @@ module.exports = {
                 // Acknowledge the choice
                 await interaction.reply({ 
                     content: `✅ Seçiminizi yaptınız: ${this.getChoiceEmoji(choice)} ${this.getChoiceName(choice)}`, 
-                    ephemeral: true 
+                    flags: 64 
                 });
             }
         }

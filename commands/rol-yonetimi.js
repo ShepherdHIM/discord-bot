@@ -4,7 +4,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('rol_yonetimi')
         .setDescription('Seviye bazlı rolleri yönetin')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>
             subcommand
                 .setName('ekle')

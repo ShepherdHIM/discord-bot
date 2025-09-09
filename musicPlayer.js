@@ -125,13 +125,48 @@ class MusicPlayerManager {
         return this.guildData.get(guildId);
     }
     
+    // Helper function to safely reply to interactions
+    async safeReply(interaction, content, options = {}) {
+        try {
+            if (interaction.replied || interaction.deferred) {
+                return await interaction.editReply(content);
+            } else {
+                return await interaction.reply({ content, ...options });
+            }
+        } catch (error) {
+            console.error('Error in safeReply:', error);
+            // Try to send a follow-up message if all else fails
+            try {
+                return await interaction.followUp({ content, ...options });
+            } catch (followUpError) {
+                console.error('Error in followUp:', followUpError);
+            }
+        }
+    }
+
+    // Helper function to safely reply with embeds
+    async safeReplyEmbed(interaction, embed, options = {}) {
+        try {
+            if (interaction.replied || interaction.deferred) {
+                return await interaction.editReply({ embeds: [embed], ...options });
+            } else {
+                return await interaction.reply({ embeds: [embed], ...options });
+            }
+        } catch (error) {
+            console.error('Error in safeReplyEmbed:', error);
+            // Try to send a follow-up message if all else fails
+            try {
+                return await interaction.followUp({ embeds: [embed], ...options });
+            } catch (followUpError) {
+                console.error('Error in followUp:', followUpError);
+            }
+        }
+    }
+    
     async play(interaction, query) {
         const channel = interaction.member.voice.channel;
         if (!channel) {
-            return interaction.reply({ 
-                content: '🎵 You need to be in a voice channel to play music!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '🎵 You need to be in a voice channel to play music!', { flags: 64 });
         }
         
         try {
@@ -227,10 +262,7 @@ class MusicPlayerManager {
     async skip(interaction) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.node.isPlaying()) {
-            return interaction.reply({ 
-                content: '❌ No music is currently playing!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ No music is currently playing!', { flags: 64 });
         }
         
         const currentTrack = queue.currentTrack;
@@ -243,16 +275,13 @@ class MusicPlayerManager {
             .addFields({ name: '👤 Skipped by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     async pause(interaction) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.node.isPlaying()) {
-            return interaction.reply({ 
-                content: '❌ No music is currently playing!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ No music is currently playing!', { flags: 64 });
         }
         
         queue.node.setPaused(!queue.node.isPaused());
@@ -265,16 +294,13 @@ class MusicPlayerManager {
             .addFields({ name: '👤 Action by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     async stop(interaction) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue) {
-            return interaction.reply({ 
-                content: '❌ No music is currently playing!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ No music is currently playing!', { flags: 64 });
         }
         
         queue.delete();
@@ -286,16 +312,13 @@ class MusicPlayerManager {
             .addFields({ name: '👤 Stopped by', value: interaction.user.toString(), inline: true })
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     async showQueue(interaction) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.tracks.size) {
-            return interaction.reply({ 
-                content: '❌ The queue is empty!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ The queue is empty!', { flags: 64 });
         }
         
         const tracks = queue.tracks.toArray();
@@ -330,16 +353,13 @@ class MusicPlayerManager {
             }
         }
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     async showNowPlaying(interaction) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue || !queue.node.isPlaying()) {
-            return interaction.reply({ 
-                content: '❌ No music is currently playing!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ No music is currently playing!', { flags: 64 });
         }
         
         const track = queue.currentTrack;
@@ -360,16 +380,13 @@ class MusicPlayerManager {
             .setThumbnail(track.thumbnail)
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     async setVolume(interaction, volume) {
         const queue = this.player.nodes.get(interaction.guild.id);
         if (!queue) {
-            return interaction.reply({ 
-                content: '❌ No music is currently playing!', 
-                ephemeral: true 
-            });
+            return this.safeReply(interaction, '❌ No music is currently playing!', { flags: 64 });
         }
         
         const oldVolume = queue.node.volume;
@@ -385,7 +402,7 @@ class MusicPlayerManager {
             )
             .setTimestamp();
         
-        await interaction.reply({ embeds: [embed] });
+        await this.safeReplyEmbed(interaction, embed);
     }
     
     createProgressBar(current, total, length) {
