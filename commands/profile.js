@@ -10,147 +10,175 @@ module.exports = {
                 .setRequired(false)),
     
     async execute(interaction) {
-        const target = interaction.options.getUser('user') || interaction.user;
-        const member = interaction.guild.members.cache.get(target.id);
-        
-        if (!member) {
-            return interaction.reply({ content: 'Kullanıcı bu sunucuda bulunamadı!', ephemeral: true });
-        }
-        
-        // Get voice manager from client
-        const voiceManager = interaction.client.voiceManager;
-        if (!voiceManager) {
-            return interaction.reply({ content: 'Ses takip sistemi başlatılmamış!', flags: 64 });
-        }
-        
-        const stats = await voiceManager.getUserStats(target.id, interaction.guildId);
-        
-        if (!stats) {
-            // Create a beautiful "getting started" embed for new users
-            const newUserEmbed = new EmbedBuilder()
-                .setColor('#00D4AA')
-                .setTitle(`🌟 Hoş geldin ${target.username}!`)
-                .setDescription('**Yolculuğunuzu başlatmaya hazır mısınız?**')
+        try {
+            // Defer reply immediately to prevent timeout
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.deferReply();
+            }
+            
+            const target = interaction.options.getUser('user') || interaction.user;
+            const member = interaction.guild.members.cache.get(target.id);
+            
+            if (!member) {
+                return interaction.editReply({ content: 'Kullanıcı bu sunucuda bulunamadı!', ephemeral: true });
+            }
+            
+            // Get voice manager from client
+            const voiceManager = interaction.client.voiceManager;
+            if (!voiceManager) {
+                return interaction.editReply({ content: 'Ses takip sistemi başlatılmamış!', ephemeral: true });
+            }
+            
+            const stats = await voiceManager.getUserStats(target.id, interaction.guildId);
+            
+            if (!stats) {
+                // Create a beautiful "getting started" embed for new users
+                const newUserEmbed = new EmbedBuilder()
+                    .setColor('#00D4AA')
+                    .setTitle(`🌟 Hoş geldin ${target.username}!`)
+                    .setDescription('**Yolculuğunuzu başlatmaya hazır mısınız?**')
+                    .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
+                    .addFields(
+                        {
+                            name: '🎤 Kazanmaya Başlayın',
+                            value: 'XP ve coin kazanmaya başlamak için bir ses kanalına katılın!',
+                            inline: false
+                        },
+                        {
+                            name: '📊 İlerleme Takibi',
+                            value: 'Her zaman `/profil` komutunu kullanarak istatistiklerinizi kontrol edin',
+                            inline: true
+                        },
+                        {
+                            name: '🏆 Yarışın',
+                            value: 'Sıralamaları görmek için `/liderlik-tablosu` komutunu kullanın',
+                            inline: true
+                        }
+                    )
+                    .setFooter({ 
+                        text: `${interaction.guild.name} • Ses aktivitesi yolculuğunuzu bugün başlatın!`,
+                        iconURL: interaction.guild.iconURL()
+                    })
+                    .setTimestamp();
+                
+                return interaction.editReply({ 
+                    embeds: [newUserEmbed], 
+                    ephemeral: interaction.options.getUser('user') ? false : true 
+                });
+            }
+            
+            // Calculate additional statistics
+            const additionalStats = await this.calculateAdvancedStats(stats, voiceManager, interaction.guildId);
+            
+            // Determine profile color based on level
+            const profileColor = this.getLevelColor(stats.level);
+            
+            // Get level title
+            const levelTitle = this.getLevelTitle(stats.level);
+            
+            // Calculate session statistics
+            const avgXPPerHour = stats.voice_time_minutes > 0 ? Math.round((stats.total_xp / stats.voice_time_minutes) * 60) : 0;
+            
+            const embed = new EmbedBuilder()
+                .setColor(profileColor)
+                .setTitle(`${this.getRankEmoji(stats.xpRank)} ${target.username}'in Profili`)
+                .setDescription(`**${levelTitle}** • Seviye ${stats.level}\n${this.createProgressBar(stats.total_xp % 100, 100, 15)} **${stats.total_xp % 100}/100 XP** (${Math.round((stats.total_xp % 100) / 100 * 100)}%)`)
                 .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
                 .addFields(
                     {
-                        name: '🎤 Kazanmaya Başlayın',
-                        value: 'XP ve coin kazanmaya başlamak için bir ses kanalına katılın!',
-                        inline: false
-                    },
-                    {
-                        name: '📊 İlerleme Takibi',
-                        value: 'Her zaman `/profil` komutunu kullanarak istatistiklerinizi kontrol edin',
+                        name: '📈 Tecrube Puanları',
+                        value: `**${stats.total_xp.toLocaleString()}** XP\n🏆 Sıralama: **#${stats.xpRank}**\n⚡ Ortalama: **${avgXPPerHour}/saat**`,
                         inline: true
                     },
                     {
-                        name: '🏆 Yarışın',
-                        value: 'Sıralamaları görmek için `/liderlik-tablosu` komutunu kullanın',
+                        name: '💰 Sanal Para Birimi', 
+                        value: `**${stats.coins.toLocaleString()}** coin\n🥇 Sıralama: **#${stats.coinRank}**\n💎 Değer: **${this.getCoinValue(stats.coins)}**`,
+                        inline: true
+                    },
+                    {
+                        name: '🎤 Ses Aktivitesi',
+                        value: `**${this.formatDuration(stats.voice_time_minutes)}**\n📊 Oturum: **${additionalStats.totalSessions}**\n⏱️ Ortalama: **${additionalStats.avgSessionTime}**`,
+                        inline: true
+                    },
+                    {
+                        name: '🎯 Performans',
+                        value: `**${this.getPerformanceRating(avgXPPerHour)}**\n📅 Aktif: ${stats.last_active ? `<t:${Math.floor(new Date(stats.last_active).getTime() / 1000)}:R>` : 'Hiçbir zaman'}\n🔥 Seri: **${additionalStats.activityStreak} gün**`,
+                        inline: true
+                    },
+                    {
+                        name: '🏅 Başarılar',
+                        value: this.getAchievements(stats, additionalStats),
+                        inline: true
+                    },
+                    {
+                        name: '📊 Sunucu İstatistikleri',
+                        value: `👥 Toplam Kullanıcı: **${additionalStats.totalUsers}**\n🎯 **%${Math.round((1 - (stats.xpRank / additionalStats.totalUsers)) * 100)}**'inden daha iyi\n📈 Büyüme: **${additionalStats.recentGrowth}**`,
                         inline: true
                     }
                 )
                 .setFooter({ 
-                    text: `${interaction.guild.name} • Ses aktivitesi yolculuğunuzu bugün başlatın!`,
+                    text: `Üye oldu: ${new Date(stats.created_at).toLocaleDateString('tr-TR')} • ${interaction.guild.name}`,
                     iconURL: interaction.guild.iconURL()
                 })
                 .setTimestamp();
             
-            return interaction.reply({ embeds: [newUserEmbed], flags: interaction.options.getUser('user') ? 0 : 64 });
-        }
-        
-        // Calculate additional statistics
-        const additionalStats = await this.calculateAdvancedStats(stats, voiceManager, interaction.guildId);
-        
-        // Determine profile color based on level
-        const profileColor = this.getLevelColor(stats.level);
-        
-        // Get level title
-        const levelTitle = this.getLevelTitle(stats.level);
-        
-        // Calculate session statistics
-        const avgXPPerHour = stats.voice_time_minutes > 0 ? Math.round((stats.total_xp / stats.voice_time_minutes) * 60) : 0;
-        
-        const embed = new EmbedBuilder()
-            .setColor(profileColor)
-            .setTitle(`${this.getRankEmoji(stats.xpRank)} ${target.username}'in Profili`)
-            .setDescription(`**${levelTitle}** • Seviye ${stats.level}\n${this.createProgressBar(stats.total_xp % 100, 100, 15)} **${stats.total_xp % 100}/100 XP** (${Math.round((stats.total_xp % 100) / 100 * 100)}%)`)
-            .setThumbnail(target.displayAvatarURL({ dynamic: true, size: 256 }))
-            .addFields(
-                {
-                    name: '📈 Tecrube Puanları',
-                    value: `**${stats.total_xp.toLocaleString()}** XP\n🏆 Sıralama: **#${stats.xpRank}**\n⚡ Ortalama: **${avgXPPerHour}/saat**`,
-                    inline: true
-                },
-                {
-                    name: '💰 Sanal Para Birimi', 
-                    value: `**${stats.coins.toLocaleString()}** coin\n🥇 Sıralama: **#${stats.coinRank}**\n💎 Değer: **${this.getCoinValue(stats.coins)}**`,
-                    inline: true
-                },
-                {
-                    name: '🎤 Ses Aktivitesi',
-                    value: `**${this.formatDuration(stats.voice_time_minutes)}**\n📊 Oturum: **${additionalStats.totalSessions}**\n⏱️ Ortalama: **${additionalStats.avgSessionTime}**`,
-                    inline: true
-                },
-                {
-                    name: '🎯 Performans',
-                    value: `**${this.getPerformanceRating(avgXPPerHour)}**\n📅 Aktif: ${stats.last_active ? `<t:${Math.floor(new Date(stats.last_active).getTime() / 1000)}:R>` : 'Hiçbir zaman'}\n🔥 Seri: **${additionalStats.activityStreak} gün**`,
-                    inline: true
-                },
-                {
-                    name: '🏅 Başarılar',
-                    value: this.getAchievements(stats, additionalStats),
-                    inline: true
-                },
-                {
-                    name: '📊 Sunucu İstatistikleri',
-                    value: `👥 Toplam Kullanıcı: **${additionalStats.totalUsers}**\n🎯 **%${Math.round((1 - (stats.xpRank / additionalStats.totalUsers)) * 100)}**'inden daha iyi\n📈 Büyüme: **${additionalStats.recentGrowth}**`,
-                    inline: true
-                }
-            )
-            .setFooter({ 
-                text: `Üye oldu: ${new Date(stats.created_at).toLocaleDateString('tr-TR')} • ${interaction.guild.name}`,
-                iconURL: interaction.guild.iconURL()
-            })
-            .setTimestamp();
-        
-        // Add level progress indicator
-        if (stats.level < 100) { // Cap at level 100 for display
-            const nextLevelXP = (stats.level + 1) * 100;
-            const currentLevelXP = stats.level * 100;
-            const progressToNext = stats.total_xp - currentLevelXP;
-            const neededForNext = nextLevelXP - currentLevelXP;
+            // Add level progress indicator
+            if (stats.level < 100) { // Cap at level 100 for display
+                const nextLevelXP = (stats.level + 1) * 100;
+                const currentLevelXP = stats.level * 100;
+                const progressToNext = stats.total_xp - currentLevelXP;
+                const neededForNext = nextLevelXP - currentLevelXP;
+                
+                embed.addFields({
+                    name: `🚀 Sonraki Seviye (${stats.level + 1})`,
+                    value: `${this.createProgressBar(progressToNext, neededForNext, 20)}\n**${progressToNext}/${neededForNext} XP** • ${stats.xpToNextLevel} XP kaldı`,
+                    inline: false
+                });
+            }
             
-            embed.addFields({
-                name: `🚀 Sonraki Seviye (${stats.level + 1})`,
-                value: `${this.createProgressBar(progressToNext, neededForNext, 20)}\n**${progressToNext}/${neededForNext} XP** • ${stats.xpToNextLevel} XP kaldı`,
-                inline: false
+            // Create action buttons
+            const actionRow = new ActionRowBuilder()
+                .addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`leaderboard_${target.id}`)
+                        .setLabel('Liderlik Tablosunu Gör')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('🏆'),
+                    new ButtonBuilder()
+                        .setCustomId(`compare_${target.id}`)
+                        .setLabel('İstatistikleri Karşılaştır')
+                        .setStyle(ButtonStyle.Secondary)
+                        .setEmoji('📊'),
+                    new ButtonBuilder()
+                        .setCustomId(`refresh_${target.id}`)
+                        .setLabel('Yenile')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('🔄')
+                );
+            
+            await interaction.editReply({ 
+                embeds: [embed], 
+                components: [actionRow]
             });
+        } catch (error) {
+            console.error('Error in profile command:', error);
+            
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ 
+                        content: '❌ Profil bilgileri alınırken bir hata oluştu!', 
+                        ephemeral: true 
+                    });
+                } else {
+                    await interaction.editReply({ 
+                        content: '❌ Profil bilgileri alınırken bir hata oluştu!', 
+                        ephemeral: true 
+                    });
+                }
+            } catch (replyError) {
+                console.error('Error sending error response:', replyError);
+            }
         }
-        
-        // Create action buttons
-        const actionRow = new ActionRowBuilder()
-            .addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`leaderboard_${target.id}`)
-                    .setLabel('Liderlik Tablosunu Gör')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('🏆'),
-                new ButtonBuilder()
-                    .setCustomId(`compare_${target.id}`)
-                    .setLabel('İstatistikleri Karşılaştır')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('📊'),
-                new ButtonBuilder()
-                    .setCustomId(`refresh_${target.id}`)
-                    .setLabel('Yenile')
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji('🔄')
-            );
-        
-        await interaction.reply({ 
-            embeds: [embed], 
-            components: [actionRow]
-        });
     },
     
     // Enhanced progress bar with better visuals

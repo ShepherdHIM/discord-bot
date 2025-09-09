@@ -143,6 +143,9 @@ module.exports = {
             case 'tahmin':
                 await this.playGuess(interaction, voiceManager, userStats);
                 break;
+            case 'rulet':
+                await this.playRoulette(interaction, voiceManager, userStats);
+                break;
             case 'tas-kagit-makas':
                 await this.playRockPaperScissors(interaction, voiceManager, userStats);
                 break;
@@ -151,6 +154,12 @@ module.exports = {
                 break;
             case 'istatistikler':
                 await this.showGameStats(interaction, voiceManager, userStats);
+                break;
+            default:
+                await interaction.reply({ 
+                    content: '❌ Bilinmeyen oyun komutu!', 
+                    ephemeral: true 
+                });
                 break;
         }
     } catch (error) {

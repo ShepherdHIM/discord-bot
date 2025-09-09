@@ -89,6 +89,26 @@ class MusicPlayerManager {
                 queue.metadata.channel.send('❌ Failed to connect to voice channel!');
             }
         });
+        
+        // Track error
+        this.player.events.on('trackError', (queue, error) => {
+            console.error('Track error:', error);
+            if (queue.metadata?.channel) {
+                queue.metadata.channel.send('❌ Error playing track. Skipping to next...');
+            }
+            // Auto-skip the problematic track
+            if (queue.tracks.size > 0) {
+                queue.node.skip();
+            }
+        });
+        
+        // Player error
+        this.player.events.on('playerError', (queue, error) => {
+            console.error('Player error:', error);
+            if (queue.metadata?.channel) {
+                queue.metadata.channel.send('❌ Player error occurred. Trying to recover...');
+            }
+        });
     }
     
     getGuildData(guildId) {
@@ -117,13 +137,18 @@ class MusicPlayerManager {
         try {
             await interaction.deferReply();
             
+            console.log(`🎵 Searching for: ${query}`);
+            
             const searchResult = await this.player.search(query, {
-                requestedBy: interaction.user
+                requestedBy: interaction.user,
+                searchEngine: 'youtube'
             });
             
             if (!searchResult || !searchResult.tracks.length) {
                 return interaction.editReply('❌ No results found for your search!');
             }
+            
+            console.log(`🎵 Found ${searchResult.tracks.length} tracks`);
             
             const queue = this.player.nodes.create(interaction.guild, {
                 metadata: {
@@ -133,11 +158,15 @@ class MusicPlayerManager {
                 leaveOnEmptyCooldown: 300000, // 5 minutes
                 leaveOnEmpty: true,
                 leaveOnEnd: false,
-                selfDeaf: true
+                selfDeaf: true,
+                bufferingTimeout: 30000, // 30 seconds timeout
+                connectionTimeout: 30000 // 30 seconds connection timeout
             });
             
             if (!queue.connection) {
+                console.log(`🎵 Connecting to voice channel: ${channel.name}`);
                 await queue.connect(channel);
+                console.log(`✅ Connected to voice channel`);
             }
             
             if (searchResult.playlist) {
@@ -156,6 +185,7 @@ class MusicPlayerManager {
                 await interaction.editReply({ embeds: [embed] });
             } else {
                 const track = searchResult.tracks[0];
+                console.log(`🎵 Adding track: ${track.title}`);
                 queue.addTrack(track);
                 
                 const embed = new EmbedBuilder()
@@ -174,11 +204,18 @@ class MusicPlayerManager {
             }
             
             if (!queue.node.isPlaying()) {
-                await queue.node.play();
-                
-                // Track guild music activity
-                const guildData = this.getGuildData(interaction.guild.id);
-                guildData.songsPlayed++;
+                console.log(`🎵 Starting playback...`);
+                try {
+                    await queue.node.play();
+                    console.log(`✅ Playback started successfully`);
+                    
+                    // Track guild music activity
+                    const guildData = this.getGuildData(interaction.guild.id);
+                    guildData.songsPlayed++;
+                } catch (playError) {
+                    console.error('❌ Error starting playback:', playError);
+                    await interaction.editReply('❌ Failed to start playback. The track might be unavailable or corrupted.');
+                }
             }
             
         } catch (error) {

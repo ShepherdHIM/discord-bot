@@ -26,123 +26,149 @@ module.exports = {
                 )),
 
     async execute(interaction) {
-        const category = interaction.options.getString('kategori') || 'random';
-        const difficulty = interaction.options.getString('zorluk') || 'medium';
-        
-        // Get voice manager for rewards
-        const voiceManager = interaction.client.voiceManager;
-        if (!voiceManager) {
-            return interaction.reply({ content: 'Bilgi yarışması sistemi mevcut değil!', ephemeral: true });
-        }
-        
-        // Get user stats
-        const userStats = await voiceManager.getUserStats(interaction.user.id, interaction.guildId);
-        if (!userStats) {
-            return interaction.reply({ 
-                content: '🧠 Önce biraz XP kazanmanız gerekiyor! Yolculuğunuza başlamak için bir ses kanalına katılın!', 
-                ephemeral: true 
-            });
-        }
-        
-        // Get a random question
-        const question = this.getRandomQuestion(category, difficulty);
-        
-        // Create answer buttons
-        const row = new ActionRowBuilder();
-        const shuffledAnswers = this.shuffleArray([...question.incorrect_answers, question.correct_answer]);
-        
-        shuffledAnswers.forEach((answer, index) => {
-            row.addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`trivia_${index}_${answer === question.correct_answer ? 'correct' : 'incorrect'}`)
-                    .setLabel(answer.length > 80 ? answer.substring(0, 77) + '...' : answer)
-                    .setStyle(ButtonStyle.Primary)
-            );
-        });
-        
-        // Calculate potential rewards based on difficulty and reward ranges
-        let xpReward, coinReward;
-        const rewardRanges = await voiceManager.db.getActiveRewardRanges(interaction.guildId);
-        const xpRanges = rewardRanges.filter(range => range.reward_type === 'xp');
-        const coinRanges = rewardRanges.filter(range => range.reward_type === 'coin');
-        
-        // Calculate base rewards based on difficulty
-        const rewardMultiplier = { easy: 1, medium: 1.5, hard: 2 }[difficulty];
-        const baseXPReward = Math.floor(20 * rewardMultiplier);
-        const baseCoinReward = Math.floor(15 * rewardMultiplier);
-        
-        // Use reward ranges if available, otherwise use base rewards
-        if (xpRanges.length > 0) {
-            const randomRange = xpRanges[Math.floor(Math.random() * xpRanges.length)];
-            xpReward = Math.floor(Math.random() * (randomRange.max_amount - randomRange.min_amount + 1)) + randomRange.min_amount;
-        } else {
-            xpReward = baseXPReward;
-        }
-        
-        if (coinRanges.length > 0) {
-            const randomRange = coinRanges[Math.floor(Math.random() * coinRanges.length)];
-            coinReward = Math.floor(Math.random() * (randomRange.max_amount - randomRange.min_amount + 1)) + randomRange.min_amount;
-        } else {
-            coinReward = baseCoinReward;
-        }
-        
-        const embed = new EmbedBuilder()
-            .setColor('#4169E1')
-            .setTitle(`🧠 ${this.getCategoryDisplayName(category)} Bilgi Yarışması`)
-            .setDescription(`**${this.getDifficultyDisplayName(difficulty)} Seviye Soru**\n\n${question.question}`)
-            .addFields(
-                { name: '🏆 Doğru Cevap Ödülü', value: `+${xpReward} XP, +${coinReward} coin`, inline: true },
-                { name: '🎯 Yanlış Cevap Ödülü', value: `+5 XP (katılım)`, inline: true },
-                { name: '⏰ Zaman Sınırı', value: '30 saniye', inline: true }
-            )
-            .setFooter({ 
-                text: `${interaction.user.username} • ${userStats.coins} coin • Seviye ${userStats.level}`,
-                iconURL: interaction.user.displayAvatarURL()
-            })
-            .setTimestamp();
-        
-        await interaction.reply({ embeds: [embed], components: [row] });
-        
-        // Store trivia data for answer handling
-        this.storeTriviaData(interaction.user.id, {
-            question,
-            difficulty,
-            category,
-            xpReward,
-            coinReward,
-            userStats,
-            voiceManager,
-            startTime: Date.now()
-        });
-        
-        // Auto-timeout after 60 seconds
-        setTimeout(async () => {
-            const triviaData = this.getTriviaData(interaction.user.id);
-            if (triviaData && !triviaData.answered) {
-                try {
-                    const timeoutEmbed = new EmbedBuilder()
-                        .setColor('#FF6B00')
-                        .setTitle('⏰ Süre Doldu!')
-                        .setDescription(`Doğru cevap: **${question.correct_answer}** idi`)
-                        .addFields({ name: 'Ödül', value: '+2 XP (zaman aşımı bonusu)', inline: false })
-                        .setFooter({ text: 'Başka bir soru deneyiniz!' });
-                    
-                    await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
-                    
-                    // Give small consolation XP
-                    await triviaData.voiceManager.db.updateUserStats(
-                        interaction.user.id,
-                        interaction.guildId,
-                        triviaData.userStats.total_xp + 2,
-                        triviaData.userStats.coins,
-                        triviaData.userStats.voice_time_minutes
-                    );
-                } catch (error) {
-                    console.error('Error handling trivia timeout:', error);
-                }
-                this.triviaData.delete(interaction.user.id);
+        try {
+            // Defer reply immediately to prevent timeout
+            if (!interaction.replied && !interaction.deferred) {
+                await interaction.deferReply();
             }
-        }, 60000);
+            
+            const category = interaction.options.getString('kategori') || 'random';
+            const difficulty = interaction.options.getString('zorluk') || 'medium';
+            
+            // Get voice manager for rewards
+            const voiceManager = interaction.client.voiceManager;
+            if (!voiceManager) {
+                return interaction.editReply({ content: 'Bilgi yarışması sistemi mevcut değil!', ephemeral: true });
+            }
+            
+            // Get user stats
+            const userStats = await voiceManager.getUserStats(interaction.user.id, interaction.guildId);
+            if (!userStats) {
+                return interaction.editReply({ 
+                    content: '🧠 Önce biraz XP kazanmanız gerekiyor! Yolculuğunuza başlamak için bir ses kanalına katılın!', 
+                    ephemeral: true 
+                });
+            }
+            
+            // Get a random question
+            const question = this.getRandomQuestion(category, difficulty);
+            
+            // Create answer buttons
+            const row = new ActionRowBuilder();
+            const shuffledAnswers = this.shuffleArray([...question.incorrect_answers, question.correct_answer]);
+            
+            shuffledAnswers.forEach((answer, index) => {
+                row.addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`trivia_${index}_${answer === question.correct_answer ? 'correct' : 'incorrect'}`)
+                        .setLabel(answer.length > 80 ? answer.substring(0, 77) + '...' : answer)
+                        .setStyle(ButtonStyle.Primary)
+                );
+            });
+            
+            // Calculate potential rewards based on difficulty and reward ranges
+            let xpReward, coinReward;
+            const rewardRanges = await voiceManager.db.getActiveRewardRanges(interaction.guildId);
+            const xpRanges = rewardRanges.filter(range => range.reward_type === 'xp');
+            const coinRanges = rewardRanges.filter(range => range.reward_type === 'coin');
+            
+            // Calculate base rewards based on difficulty
+            const rewardMultiplier = { easy: 1, medium: 1.5, hard: 2 }[difficulty];
+            const baseXPReward = Math.floor(20 * rewardMultiplier);
+            const baseCoinReward = Math.floor(15 * rewardMultiplier);
+            
+            // Use reward ranges if available, otherwise use base rewards
+            if (xpRanges.length > 0) {
+                const randomRange = xpRanges[Math.floor(Math.random() * xpRanges.length)];
+                xpReward = Math.floor(Math.random() * (randomRange.max_amount - randomRange.min_amount + 1)) + randomRange.min_amount;
+            } else {
+                xpReward = baseXPReward;
+            }
+            
+            if (coinRanges.length > 0) {
+                const randomRange = coinRanges[Math.floor(Math.random() * coinRanges.length)];
+                coinReward = Math.floor(Math.random() * (randomRange.max_amount - randomRange.min_amount + 1)) + randomRange.min_amount;
+            } else {
+                coinReward = baseCoinReward;
+            }
+            
+            const embed = new EmbedBuilder()
+                .setColor('#4169E1')
+                .setTitle(`🧠 ${this.getCategoryDisplayName(category)} Bilgi Yarışması`)
+                .setDescription(`**${this.getDifficultyDisplayName(difficulty)} Seviye Soru**\n\n${question.question}`)
+                .addFields(
+                    { name: '🏆 Doğru Cevap Ödülü', value: `+${xpReward} XP, +${coinReward} coin`, inline: true },
+                    { name: '🎯 Yanlış Cevap Ödülü', value: `+5 XP (katılım)`, inline: true },
+                    { name: '⏰ Zaman Sınırı', value: '30 saniye', inline: true }
+                )
+                .setFooter({ 
+                    text: `${interaction.user.username} • ${userStats.coins} coin • Seviye ${userStats.level}`,
+                    iconURL: interaction.user.displayAvatarURL()
+                })
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [embed], components: [row] });
+            
+            // Store trivia data for answer handling
+            this.storeTriviaData(interaction.user.id, {
+                question,
+                difficulty,
+                category,
+                xpReward,
+                coinReward,
+                userStats,
+                voiceManager,
+                startTime: Date.now()
+            });
+            
+            // Auto-timeout after 60 seconds
+            setTimeout(async () => {
+                const triviaData = this.getTriviaData(interaction.user.id);
+                if (triviaData && !triviaData.answered) {
+                    try {
+                        const timeoutEmbed = new EmbedBuilder()
+                            .setColor('#FF6B00')
+                            .setTitle('⏰ Süre Doldu!')
+                            .setDescription(`Doğru cevap: **${question.correct_answer}** idi`)
+                            .addFields({ name: 'Ödül', value: '+2 XP (zaman aşımı bonusu)', inline: false })
+                            .setFooter({ text: 'Başka bir soru deneyiniz!' });
+                        
+                        await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
+                        
+                        // Give small consolation XP
+                        await triviaData.voiceManager.db.updateUserStats(
+                            interaction.user.id,
+                            interaction.guildId,
+                            triviaData.userStats.total_xp + 2,
+                            triviaData.userStats.coins,
+                            triviaData.userStats.voice_time_minutes
+                        );
+                    } catch (error) {
+                        console.error('Error handling trivia timeout:', error);
+                    }
+                    this.triviaData.delete(interaction.user.id);
+                }
+            }, 60000);
+            
+        } catch (error) {
+            console.error('Error in trivia command:', error);
+            
+            try {
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ 
+                        content: '❌ Bilgi yarışması başlatılırken bir hata oluştu!', 
+                        ephemeral: true 
+                    });
+                } else {
+                    await interaction.editReply({ 
+                        content: '❌ Bilgi yarışması başlatılırken bir hata oluştu!', 
+                        ephemeral: true 
+                    });
+                }
+            } catch (replyError) {
+                console.error('Error sending error response:', replyError);
+            }
+        }
     },
     
     getRandomQuestion(category, difficulty) {
