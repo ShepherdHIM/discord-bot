@@ -243,8 +243,7 @@ client.on(Events.InteractionCreate, async interaction => {
             } catch (followUpError) {
                 console.error('❌ Error sending error message:', followUpError);
             }
-        }
-    }
+            
     
     // Handle button interactions for profile command and games
     if (interaction.isButton()) {
