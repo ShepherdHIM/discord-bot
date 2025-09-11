@@ -449,6 +449,131 @@ client.on(Events.InteractionCreate, async interaction => {
                 // Handle the help button click directly without calling the command again
                 await client.handleHelpButtons(interaction, category);
             }
+            
+            // Handle Rate Management buttons
+            if (action === 'rate') {
+                const rateCommand = client.commands.get('oran-yonetimi');
+                if (!rateCommand) {
+                    return interaction.reply({
+                        content: '❌ Rate management command not found!',
+                        ephemeral: true
+                    });
+                }
+                
+                // Check permissions
+                if (!interaction.member.permissions.has('ManageGuild')) {
+                    return interaction.reply({
+                        content: '❌ Bu işlem için sunucu yönetme yetkisine sahip olmalısınız!',
+                        ephemeral: true
+                    });
+                }
+                
+                const buttonType = customIdParts[1]; // rate_quickset, rate_compare, rate_calculate
+                console.log(`Rate management button clicked: ${buttonType}`);
+                
+                // Defer the interaction first
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.deferReply({ ephemeral: true });
+                }
+                
+                try {
+                    switch (buttonType) {
+                        case 'quickset':
+                            await rateCommand.showQuickSetMenu(interaction);
+                            break;
+                        case 'compare':
+                            await rateCommand.compareRates(interaction, client.voiceManager);
+                            break;
+                        case 'calculate':
+                            await rateCommand.showCalculateMenu(interaction);
+                            break;
+                        default:
+                            await interaction.editReply({
+                                content: '❌ Bilinmeyen rate management butonu!'
+                            });
+                    }
+                } catch (error) {
+                    console.error('Error handling rate management button:', error);
+                    await interaction.editReply({
+                        content: '❌ Rate management işlemi sırasında bir hata oluştu!'
+                    });
+                }
+                return;
+            }
+            
+            // Handle Quick Set buttons
+            if (action === 'quickset') {
+                const rateCommand = client.commands.get('oran-yonetimi');
+                if (!rateCommand) {
+                    return interaction.reply({
+                        content: '❌ Rate management command not found!',
+                        ephemeral: true
+                    });
+                }
+                
+                // Check permissions
+                if (!interaction.member.permissions.has('ManageGuild')) {
+                    return interaction.reply({
+                        content: '❌ Bu işlem için sunucu yönetme yetkisine sahip olmalısınız!',
+                        ephemeral: true
+                    });
+                }
+                
+                const profileType = customIdParts[1]; // low, normal, high, premium, max
+                console.log(`Quick set button clicked: ${profileType}`);
+                
+                // Defer the interaction first
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.deferReply({ ephemeral: true });
+                }
+                
+                try {
+                    await rateCommand.quickSetRates(interaction, client.voiceManager, profileType);
+                } catch (error) {
+                    console.error('Error handling quick set button:', error);
+                    await interaction.editReply({
+                        content: '❌ Hızlı ayar işlemi sırasında bir hata oluştu!'
+                    });
+                }
+                return;
+            }
+            
+            // Handle Calculate buttons
+            if (action === 'calc') {
+                const rateCommand = client.commands.get('oran-yonetimi');
+                if (!rateCommand) {
+                    return interaction.reply({
+                        content: '❌ Rate management command not found!',
+                        ephemeral: true
+                    });
+                }
+                
+                // Check permissions
+                if (!interaction.member.permissions.has('ManageGuild')) {
+                    return interaction.reply({
+                        content: '❌ Bu işlem için sunucu yönetme yetkisine sahip olmalısınız!',
+                        ephemeral: true
+                    });
+                }
+                
+                const minutes = parseInt(customIdParts[1]); // 30, 60, 120, 480, 1440
+                console.log(`Calculate button clicked: ${minutes} minutes`);
+                
+                // Defer the interaction first
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.deferReply({ ephemeral: true });
+                }
+                
+                try {
+                    await rateCommand.calculateEarnings(interaction, client.voiceManager, minutes);
+                } catch (error) {
+                    console.error('Error handling calculate button:', error);
+                    await interaction.editReply({
+                        content: '❌ Hesaplama işlemi sırasında bir hata oluştu!'
+                    });
+                }
+                return;
+            }
 
         } catch (error) {
             console.error('Error handling button interaction:', error);

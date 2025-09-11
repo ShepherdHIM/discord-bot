@@ -148,8 +148,8 @@ module.exports = {
         await interaction.editReply({ embeds: [embed], components: [row] });
     },
     
-    async quickSetRates(interaction, voiceManager) {
-        const profile = interaction.options.getString('profil');
+    async quickSetRates(interaction, voiceManager, profileType = null) {
+        const profile = profileType || interaction.options?.getString('profil');
         
         const rateProfiles = {
             'low': { xp: 1, coin: 1, name: 'Düşük Oran' },
@@ -225,16 +225,16 @@ module.exports = {
         await interaction.editReply({ embeds: [embed] });
     },
     
-    async calculateEarnings(interaction, voiceManager) {
-        const minutes = interaction.options.getInteger('dakika');
+    async calculateEarnings(interaction, voiceManager, minutes = null) {
+        const timeMinutes = minutes || interaction.options?.getInteger('dakika');
         const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
         
-        const totalXP = settings.xp_per_minute * minutes;
-        const totalCoins = settings.coins_per_minute * minutes;
+        const totalXP = settings.xp_per_minute * timeMinutes;
+        const totalCoins = settings.coins_per_minute * timeMinutes;
         const levels = Math.floor(totalXP / 100);
         
-        const hours = Math.floor(minutes / 60);
-        const remainingMinutes = minutes % 60;
+        const hours = Math.floor(timeMinutes / 60);
+        const remainingMinutes = timeMinutes % 60;
         
         const embed = new EmbedBuilder()
             .setColor('#FFD700')
@@ -245,7 +245,7 @@ module.exports = {
                 { name: '🪙 Toplam Coin', value: `${totalCoins.toLocaleString()} coin`, inline: true },
                 { name: '🎯 Seviye Artışı', value: `${levels} seviye`, inline: true },
                 { name: '📊 Dakikalık Oran', value: `${settings.xp_per_minute} XP / ${settings.coins_per_minute} Coin`, inline: true },
-                { name: '⏱️ Hesaplanan Süre', value: `${minutes} dakika`, inline: true },
+                { name: '⏱️ Hesaplanan Süre', value: `${timeMinutes} dakika`, inline: true },
                 { name: '💎 Değer Oranı', value: `${(totalCoins / totalXP * 100).toFixed(1)}% coin/XP`, inline: true }
             )
             .setFooter({ 
@@ -318,5 +318,137 @@ module.exports = {
         } else {
             return '⚡ Maksimum oranlar: Çok aktif sunucular için, aşırı hızlı ilerleme sağlar.';
         }
+    },
+    
+    async showQuickSetMenu(interaction) {
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#FFD700')
+            .setTitle('⚡ Hızlı Oran Ayarı')
+            .setDescription('Önceden tanımlanmış oran profillerinden birini seçin:')
+            .addFields(
+                {
+                    name: '🔴 Düşük Oran',
+                    value: '1 XP/dakika • 1 Coin/dakika\n• Yeni sunucular için ideal',
+                    inline: true
+                },
+                {
+                    name: '🟡 Normal Oran',
+                    value: '3 XP/dakika • 2 Coin/dakika\n• Çoğu sunucu için uygun',
+                    inline: true
+                },
+                {
+                    name: '🟠 Yüksek Oran',
+                    value: '5 XP/dakika • 3 Coin/dakika\n• Aktif topluluklar için',
+                    inline: true
+                },
+                {
+                    name: '🟢 Premium Oran',
+                    value: '8 XP/dakika • 5 Coin/dakika\n• Çok aktif sunucular için',
+                    inline: true
+                },
+                {
+                    name: '🔵 Maksimum Oran',
+                    value: '10 XP/dakika • 7 Coin/dakika\n• En yüksek hız',
+                    inline: true
+                }
+            )
+            .setFooter({ 
+                text: `${interaction.guild.name} • Hızlı Ayar Menüsü`,
+                iconURL: interaction.guild.iconURL()
+            })
+            .setTimestamp();
+        
+        const row1 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('quickset_low')
+                    .setLabel('Düşük')
+                    .setEmoji('🔴')
+                    .setStyle(ButtonStyle.Danger),
+                new ButtonBuilder()
+                    .setCustomId('quickset_normal')
+                    .setLabel('Normal')
+                    .setEmoji('🟡')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('quickset_high')
+                    .setLabel('Yüksek')
+                    .setEmoji('🟠')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        const row2 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('quickset_premium')
+                    .setLabel('Premium')
+                    .setEmoji('🟢')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('quickset_max')
+                    .setLabel('Maksimum')
+                    .setEmoji('🔵')
+                    .setStyle(ButtonStyle.Success)
+            );
+        
+        await interaction.editReply({ embeds: [embed], components: [row1, row2] });
+    },
+    
+    async showCalculateMenu(interaction) {
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        
+        const embed = new EmbedBuilder()
+            .setColor('#00BFFF')
+            .setTitle('🧮 Kazanç Hesaplayıcı')
+            .setDescription('Farklı süreler için kazanç hesaplaması yapın:')
+            .addFields(
+                {
+                    name: '⏰ Hesaplama Seçenekleri',
+                    value: 'Aşağıdaki butonlardan birini seçerek belirli süreler için kazanç hesaplaması yapabilirsiniz.',
+                    inline: false
+                }
+            )
+            .setFooter({ 
+                text: `${interaction.guild.name} • Kazanç Hesaplayıcı`,
+                iconURL: interaction.guild.iconURL()
+            })
+            .setTimestamp();
+        
+        const row1 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('calc_30')
+                    .setLabel('30 Dakika')
+                    .setEmoji('⏰')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('calc_60')
+                    .setLabel('1 Saat')
+                    .setEmoji('🕐')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
+                    .setCustomId('calc_120')
+                    .setLabel('2 Saat')
+                    .setEmoji('🕑')
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        const row2 = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId('calc_480')
+                    .setLabel('8 Saat')
+                    .setEmoji('🕗')
+                    .setStyle(ButtonStyle.Success),
+                new ButtonBuilder()
+                    .setCustomId('calc_1440')
+                    .setLabel('24 Saat')
+                    .setEmoji('🌅')
+                    .setStyle(ButtonStyle.Success)
+            );
+        
+        await interaction.editReply({ embeds: [embed], components: [row1, row2] });
     }
 };
