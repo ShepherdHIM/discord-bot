@@ -1053,7 +1053,7 @@ client.handleHelpButtons = async (interaction, category) => {
                     },
                     {
                         name: '🛠️ Genel Komutlar',
-                        value: '`/ping` - Bot gecikme testi\n`/bilgi-yarismasi` - Bilgi oyunu\n`/yardim` - Bu yardim menusu',
+                        value: '`/ping` - Bot gecikme testi\n`/bilgi-yarismasi` - Bilgi oyunu\n`/destek` - Gelistiriciye destek mesaji\n`/yardim` - Bu yardim menusu',
                         inline: true
                     }
                 )
