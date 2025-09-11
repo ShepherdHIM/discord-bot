@@ -314,7 +314,21 @@ client.on(Events.InteractionCreate, async interaction => {
                             if (!interaction.replied && !interaction.deferred) {
                                 return interaction.update(options);
                             }
-                        }
+                        },
+                        deferReply: async () => {
+                            if (!interaction.replied && !interaction.deferred) {
+                                await interaction.deferUpdate();
+                            }
+                        },
+                        editReply: (options) => {
+                            if (interaction.replied || interaction.deferred) {
+                                return interaction.editReply(options);
+                            } else {
+                                return interaction.update(options);
+                            }
+                        },
+                        deferred: interaction.deferred,
+                        replied: interaction.replied
                     };
                     await profileCommand.execute(mockInteraction);
                 }

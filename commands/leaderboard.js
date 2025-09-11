@@ -55,7 +55,7 @@ module.exports = {
                 break;
             case 'voice_time':
                 // Custom query for voice time leaderboard
-                leaderboard = await voiceManager.db.dbAll(`
+                leaderboard = await voiceManager.dbAll(`
                     SELECT user_id, username, total_xp, coins, voice_time_minutes, last_active 
                     FROM users WHERE guild_id = ? ORDER BY voice_time_minutes DESC LIMIT ?
                 `, [interaction.guildId, limit]);
@@ -130,7 +130,7 @@ module.exports = {
                     break;
                 case 'voice_time':
                     // Calculate voice time rank
-                    const result = await voiceManager.db.dbGet(`
+                    const result = await voiceManager.dbGet(`
                         SELECT COUNT(*) + 1 as rank FROM users 
                         WHERE guild_id = ? AND voice_time_minutes > ?
                     `, [interaction.guildId, currentUserStats.voice_time_minutes]);

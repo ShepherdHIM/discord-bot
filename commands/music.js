@@ -75,10 +75,6 @@ module.exports = {
                         .setRequired(true)))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('sozler')
-                .setDescription('Mevcut sarkinin sozlerini al veya ara'))
-        .addSubcommand(subcommand =>
-            subcommand
                 .setName('istatistikler')
                 .setDescription('Muzik dinleme istatistiklerini goruntule')),
     
@@ -175,10 +171,6 @@ module.exports = {
                 case 'cikar':
                     const position = interaction.options.getInteger('position');
                     await this.removeTrack(interaction, musicPlayer, position);
-                    break;
-                    
-                case 'sozler':
-                    await this.getLyrics(interaction, musicPlayer);
                     break;
                     
                 case 'istatistikler':
@@ -363,14 +355,6 @@ module.exports = {
         // For now, we'll redirect to the play command
         await interaction.editReply({ 
             content: '🔍 **Search feature coming soon!**\nFor now, use `/music play` with your search terms.', 
-            flags: 64 
-        });
-    },
-    
-    async getLyrics(interaction, musicPlayer) {
-        // This would implement lyrics fetching
-        await interaction.editReply({ 
-            content: '🎤 **Lyrics feature coming soon!**\nWe\'re working on integrating lyrics for the current track.', 
             flags: 64 
         });
     },
