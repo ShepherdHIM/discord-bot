@@ -77,7 +77,7 @@ module.exports = {
                 },
                 {
                     name: '🛠️ Genel Komutlar',
-                    value: '`/ping` - Bot gecikme testi\n`/bilgi-yarismasi` - Bilgi oyunu\n`/destek` - Gelistiriciye destek mesaji\n`/yardim` - Bu yardim menusu',
+                    value: '`/ping` - Bot gecikme testi\n`/bilgi-yarismasi` - Bilgi oyunu\n📞 **Support**\nHave a question? Get help with the /help command!\n`/yardim` - Bu yardim menusu',
                     inline: true
                 }
             )
@@ -371,7 +371,7 @@ module.exports = {
                 },
                 {
                     name: '📞 Destek & Iletisim',
-                    value: '`/destek [mesaj]` - Gelistiriciye destek mesaji gonder\n• Mesajiniz gelistiriciye ozel olarak iletilir\n• Sorunlarinizi ve onerilerinizi paylasin',
+                    value: '📞 **Support**\nHave a question? Get help with the /help command!',
                     inline: false
                 },
                 {

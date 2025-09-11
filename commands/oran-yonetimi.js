@@ -26,22 +26,6 @@ module.exports = {
                         )))
         .addSubcommand(subcommand =>
             subcommand
-                .setName('ozel_ayar')
-                .setDescription('Özel XP ve coin oranları ayarla')
-                .addIntegerOption(option =>
-                    option.setName('xp')
-                        .setDescription('Dakika başına XP (1-50)')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(50))
-                .addIntegerOption(option =>
-                    option.setName('coin')
-                        .setDescription('Dakika başına coin (1-25)')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(25)))
-        .addSubcommand(subcommand =>
-            subcommand
                 .setName('hesaplama')
                 .setDescription('Farklı senaryolar için kazanç hesapla')
                 .addIntegerOption(option =>
@@ -80,9 +64,6 @@ module.exports = {
                 break;
             case 'hizli_ayar':
                 await this.quickSetRates(interaction, voiceManager);
-                break;
-            case 'ozel_ayar':
-                await this.customSetRates(interaction, voiceManager);
                 break;
             case 'hesaplama':
                 await this.calculateEarnings(interaction, voiceManager);
@@ -184,40 +165,6 @@ module.exports = {
             )
             .setFooter({ 
                 text: `${interaction.guild.name} • Oran Yönetim Sistemi`,
-                iconURL: interaction.guild.iconURL()
-            })
-            .setTimestamp();
-        
-        await interaction.editReply({ embeds: [embed] });
-    },
-    
-    async customSetRates(interaction, voiceManager) {
-        const xpRate = interaction.options.getInteger('xp');
-        const coinRate = interaction.options.getInteger('coin');
-        
-        const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
-        const newSettings = {
-            ...currentSettings,
-            xp_per_minute: xpRate,
-            coins_per_minute: coinRate
-        };
-        
-        await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
-        
-        const embed = new EmbedBuilder()
-            .setColor('#00ff00')
-            .setTitle('✅ Özel Oran Ayarı Tamamlandı!')
-            .setDescription('Özelleştirilmiş oranlarınız başarıyla ayarlandı!')
-            .addFields(
-                { name: '⚡ Yeni XP Oranı', value: `${xpRate} XP/dakika`, inline: true },
-                { name: '🪙 Yeni Coin Oranı', value: `${coinRate} coin/dakika`, inline: true },
-                { name: '⚖️ Oran Dengesi', value: this.getRateBalance(xpRate, coinRate), inline: true },
-                { name: '📊 Günlük Potansiyel', value: `${xpRate * 60 * 24} XP / ${coinRate * 60 * 24} Coin`, inline: false },
-                { name: '🎯 Seviye Hızı', value: `${Math.ceil(100 / xpRate)} dakika/seviye`, inline: true },
-                { name: '👑 Yönetici', value: interaction.user.toString(), inline: true }
-            )
-            .setFooter({ 
-                text: `${interaction.guild.name} • Özel Oran Yapılandırması`,
                 iconURL: interaction.guild.iconURL()
             })
             .setTimestamp();

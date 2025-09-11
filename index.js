@@ -333,31 +333,51 @@ client.on(Events.InteractionCreate, async interaction => {
                     await profileCommand.execute(mockInteraction);
                 }
             } else if (action2 === 'leaderboard') {
-                // Show leaderboard
-                const leaderboardCommand = client.commands.get('liderlik-tablosu');
-                if (leaderboardCommand) {
-                    // Defer the interaction first
+                // Show leaderboard directly
+                try {
                     if (!interaction.replied && !interaction.deferred) {
                         await interaction.deferReply({ ephemeral: true });
                     }
                     
-                    const mockInteraction = {
-                        ...interaction,
-                        guild: interaction.guild,
-                        client: client,
-                        options: {
-                            getString: () => 'xp',
-                            getInteger: () => 10
-                        },
-                        reply: (options) => {
-                            if (!interaction.replied && !interaction.deferred) {
-                                return interaction.followUp({ ...options, ephemeral: true });
-                            } else {
-                                return interaction.editReply(options);
-                            }
-                        }
-                    };
-                    await leaderboardCommand.execute(mockInteraction);
+                    const voiceManager = client.voiceManager;
+                    if (!voiceManager) {
+                        return interaction.editReply({ content: '❌ Ses takip sistemi mevcut değil!', ephemeral: true });
+                    }
+                    
+                    // Get XP leaderboard
+                    const xpLeaderboard = await voiceManager.getXPLeaderboard(interaction.guildId, 10);
+                    
+                    if (xpLeaderboard.length === 0) {
+                        return interaction.editReply({ 
+                            content: '❌ Henüz liderlik tablosu verisi bulunmuyor!', 
+                            ephemeral: true 
+                        });
+                    }
+                    
+                    const { EmbedBuilder } = require('discord.js');
+                    const embed = new EmbedBuilder()
+                        .setColor('#FFD700')
+                        .setTitle('🏆 XP Liderlik Tablosu')
+                        .setDescription('En yüksek XP\'ye sahip kullanıcılar:')
+                        .setTimestamp();
+                    
+                    let leaderboardText = '';
+                    for (let i = 0; i < xpLeaderboard.length; i++) {
+                        const user = xpLeaderboard[i];
+                        const rank = i + 1;
+                        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+                        leaderboardText += `${medal} <@${user.user_id}> - **${user.total_xp}** XP\n`;
+                    }
+                    
+                    embed.addFields({ name: '📊 Sıralama', value: leaderboardText, inline: false });
+                    
+                    await interaction.editReply({ embeds: [embed], ephemeral: true });
+                } catch (error) {
+                    console.error('Error showing leaderboard:', error);
+                    await interaction.editReply({ 
+                        content: '❌ Liderlik tablosu gösterilirken bir hata oluştu!', 
+                        ephemeral: true 
+                    });
                 }
             } else if (action2 === 'compare') {
                 // Implement comparison feature
@@ -648,7 +668,7 @@ async function awardBrowserLoginRewards() {
         
         try {
             // Get guild settings
-            const guildSettings = await voiceManager.db.getGuildSettings(guildId);
+            const guildSettings = await voiceManager.getGuildSettings(guildId);
             
             // Check if it's time to award XP based on interval
             const timeSinceLastXPReward = Date.now() - (data.lastXPReward || data.lastActivity || 0);
@@ -665,7 +685,7 @@ async function awardBrowserLoginRewards() {
             if (!shouldAwardXP && !shouldAwardCoins) continue;
             
             // Get active reward ranges for this guild
-            const rewardRanges = await voiceManager.db.getActiveRewardRanges(guildId);
+            const rewardRanges = await voiceManager.getActiveRewardRanges(guildId);
             const xpRanges = rewardRanges.filter(range => range.reward_type === 'xp');
             const coinRanges = rewardRanges.filter(range => range.reward_type === 'coin');
             
@@ -699,14 +719,14 @@ async function awardBrowserLoginRewards() {
             }
             
             // Get user stats
-            const user = await voiceManager.db.getUser(userId, guildId);
+            const user = await voiceManager.getUser(userId, guildId);
             if (user) {
                 const oldLevel = Math.floor(user.total_xp / 100);
                 const newTotalXP = user.total_xp + earnedXP;
                 const newLevel = Math.floor(newTotalXP / 100);
                 
                 // Update user stats
-                await voiceManager.db.updateUserStats(
+                await voiceManager.updateUserStats(
                     userId,
                     guildId,
                     newTotalXP,
@@ -773,7 +793,7 @@ client.handleTriviaAnswer = async (interaction) => {
     const newXP = triviaData.userStats.total_xp + xpGain;
     
     // Update user stats
-    await triviaData.voiceManager.db.updateUserStats(
+    await triviaData.voiceManager.updateUserStats(
         interaction.user.id,
         interaction.guildId,
         newXP,
@@ -1492,11 +1512,11 @@ client.on(Events.GuildMemberAdd, async member => {
     
     try {
         // Initialize new member with level 1 and 0 XP
-        await client.voiceManager?.db.updateUserStats(member.user.id, member.guild.id, 0, 0, 0);
+        await client.voiceManager?.updateUserStats(member.user.id, member.guild.id, 0, 0, 0);
         console.log(`📊 Initialized ${member.user.tag} with level 1, 0 XP`);
         
         // Check for starting role (level 1 role) and assign it
-        const levelRoles = await client.voiceManager?.db.getLevelRoles(member.guild.id);
+        const levelRoles = await client.voiceManager?.getLevelRoles(member.guild.id);
         const startingRole = levelRoles?.find(role => role.level === 1);
         
         if (startingRole) {
@@ -1516,7 +1536,7 @@ client.on(Events.GuildMemberAdd, async member => {
         }
         
         // Get guild settings to check for configured welcome channel
-        const guildSettings = await client.voiceManager?.db.getGuildSettings(member.guild.id);
+        const guildSettings = await client.voiceManager?.getGuildSettings(member.guild.id);
         let channel = null;
         
         // First, try to use channel settings from /kanal_ayarla command

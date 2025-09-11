@@ -741,6 +741,59 @@ class VoiceActivityManager {
         return user.coinMultiplier.multiplier;
     }
     
+    // Delegate database methods to db instance
+    async getGuildSettings(guildId) {
+        return this.db.getGuildSettings(guildId);
+    }
+    
+    async updateGuildSettings(guildId, settings) {
+        return this.db.updateGuildSettings(guildId, settings);
+    }
+    
+    async getUser(userId, guildId) {
+        return this.db.getUser(userId, guildId);
+    }
+    
+    async updateUserStats(userId, guildId, total_xp, coins, voice_time_minutes) {
+        return this.db.updateUserStats(userId, guildId, total_xp, coins, voice_time_minutes);
+    }
+    
+    async getXPLeaderboard(guildId, limit) {
+        return this.db.getXPLeaderboard(guildId, limit);
+    }
+    
+    async getCoinLeaderboard(guildId, limit) {
+        return this.db.getCoinLeaderboard(guildId, limit);
+    }
+    
+    async getActiveRewardRanges(guildId) {
+        return this.db.getActiveRewardRanges(guildId);
+    }
+    
+    async addRewardRange(guildId, rewardType, minAmount, maxAmount, duration) {
+        return this.db.addRewardRange(guildId, rewardType, minAmount, maxAmount, duration);
+    }
+    
+    async getLevelRoles(guildId) {
+        return this.db.getLevelRoles(guildId);
+    }
+    
+    async addLevelRole(guildId, level, roleId, roleName) {
+        return this.db.addLevelRole(guildId, level, roleId, roleName);
+    }
+    
+    async removeLevelRole(guildId, level) {
+        return this.db.removeLevelRole(guildId, level);
+    }
+    
+    async dbAll(query, params) {
+        return this.db.dbAll(query, params);
+    }
+    
+    async dbGet(query, params) {
+        return this.db.dbGet(query, params);
+    }
+    
     // Cleanup method
     cleanup() {
         this.db.close();

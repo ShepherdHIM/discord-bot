@@ -14,6 +14,14 @@ module.exports = {
                 .setRequired(false)),
     
     async execute(interaction) {
+        // Check if user has admin permissions
+        if (!interaction.member.permissions.has('Administrator')) {
+            return interaction.reply({ 
+                content: '❌ Bu komutu sadece yöneticiler kullanabilir!', 
+                ephemeral: true 
+            });
+        }
+        
         const message = interaction.options.getString('message');
         const channel = interaction.options.getChannel('channel') || interaction.channel;
         
