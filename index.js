@@ -69,28 +69,30 @@ async function deployCommands() {
             timeout: 10000 // 10 second timeout
         }).setToken(process.env.DISCORD_TOKEN);
         
-        // Clear existing global commands first
-        console.log('🧹 Clearing existing global commands...');
-        await Promise.race([
-            rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
-                { body: [] }
-            ),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
-        ]);
+        // Only deploy to guild if GUILD_ID is available
+        const guildId = process.env.GUILD_ID;
+        if (guildId) {
+            console.log(`🔍 Checking guild commands for guild ${guildId}...`);
+            
+            try {
+                // Deploy to guild (instant)
+                const data = await rest.put(
+                    Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
+                    { body: commands }
+                );
+                
+                console.log(`✅ Successfully deployed ${data.length} guild commands!`);
+                console.log('⚡ Guild commands are now available instantly!');
+                
+            } catch (guildError) {
+                console.log('⚠️ Guild deployment failed:', guildError.message);
+                console.log('💡 Commands may still work if previously deployed');
+            }
+        } else {
+            console.log('⚠️ No GUILD_ID found, skipping guild deployment');
+        }
         
-        // Deploy new commands globally
-        console.log(`🚀 Deploying ${commands.length} commands globally...`);
-        const data = await Promise.race([
-            rest.put(
-                Routes.applicationCommands(process.env.CLIENT_ID),
-                { body: commands }
-            ),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 15000))
-        ]);
-        
-        console.log(`✅ Successfully deployed ${data.length} slash commands globally!`);
-        console.log('ℹ️ Commands will be available in all servers within 1 hour');
+        console.log('ℹ️ Bot will continue running without global deployment');
         
     } catch (error) {
         console.error('❌ Auto-deploy failed:', error.message);
@@ -174,35 +176,6 @@ client.once(Events.ClientReady, async () => {
     // Bot status is handled by the rotating presence system above
     
     // Auto-deploy slash commands to the guild if none are installed
-    (async () => {
-        try {
-            const guildId = process.env.GUILD_ID;
-            if (!guildId) {
-                console.log('⚠️ GUILD_ID not set, skipping guild command deployment');
-                return;
-            }
-            
-            console.log(`🔍 Checking guild commands for guild ${guildId}...`);
-            const existing = await client.application.commands.fetch({ guildId }).catch(() => null);
-            
-            if (!existing || existing.size === 0) {
-                console.log('🚀 No guild commands found, deploying...');
-                const { REST, Routes } = require('discord.js');
-                const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-                const body = Array.from(client.commands.values()).map(cmd => cmd.data.toJSON());
-                
-                await rest.put(Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId), { body });
-                console.log(`✅ Auto-deployed ${body.length} guild commands to ${guildId}`);
-                console.log('⚡ Guild commands are now available instantly!');
-            } else {
-                console.log(`✅ Found ${existing.size} existing guild commands`);
-            }
-        } catch (e) {
-            console.log('⚠️ Auto-deploy failed:', e?.message || e);
-            console.log('💡 Run "node deploy-commands.js" manually to deploy commands');
-        }
-    })();
-    
     // Set up periodic XP/coin awarding for browser login users (every minute)
     setInterval(() => {
         awardBrowserLoginRewards();
