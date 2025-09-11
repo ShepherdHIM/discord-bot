@@ -69,30 +69,48 @@ async function deployCommands() {
             timeout: 10000 // 10 second timeout
         }).setToken(process.env.DISCORD_TOKEN);
         
-        // Only deploy to guild if GUILD_ID is available
+        // Deploy to both guild and globally
         const guildId = process.env.GUILD_ID;
+        
+        // Deploy to guild first (instant)
         if (guildId) {
-            console.log(`🔍 Checking guild commands for guild ${guildId}...`);
+            console.log(`🔍 Deploying to guild ${guildId}...`);
             
             try {
-                // Deploy to guild (instant)
-                const data = await rest.put(
+                const guildData = await rest.put(
                     Routes.applicationGuildCommands(process.env.CLIENT_ID, guildId),
                     { body: commands }
                 );
                 
-                console.log(`✅ Successfully deployed ${data.length} guild commands!`);
+                console.log(`✅ Successfully deployed ${guildData.length} guild commands!`);
                 console.log('⚡ Guild commands are now available instantly!');
                 
             } catch (guildError) {
                 console.log('⚠️ Guild deployment failed:', guildError.message);
                 console.log('💡 Commands may still work if previously deployed');
             }
-        } else {
-            console.log('⚠️ No GUILD_ID found, skipping guild deployment');
         }
         
-        console.log('ℹ️ Bot will continue running without global deployment');
+        // Deploy globally (may take up to 1 hour)
+        console.log('🌍 Deploying commands globally...');
+        
+        try {
+            const globalData = await rest.put(
+                Routes.applicationCommands(process.env.CLIENT_ID),
+                { body: commands }
+            );
+            
+            console.log(`✅ Successfully deployed ${globalData.length} global commands!`);
+            console.log('⏱️ Global commands may take up to 1 hour to sync across all servers');
+            
+        } catch (globalError) {
+            console.error('❌ Global deployment failed:', globalError.message);
+            console.log('💡 This might be due to:');
+            console.log('   • Missing applications.commands scope in bot invite');
+            console.log('   • Insufficient bot permissions');
+            console.log('   • Rate limiting');
+            console.log('   • Invalid CLIENT_ID');
+        }
         
     } catch (error) {
         console.error('❌ Auto-deploy failed:', error.message);
@@ -115,9 +133,9 @@ client.once(Events.ClientReady, async () => {
     // Set up rotating presence
     const presenceMessages = [
         { type: 0, name: '/yardim | All commands' }, // Playing
-        { type: 0, name: 'Cyberpunk 2077' }, // Playing
-        { type: 2, name: 'Sagopa Kajmer ve Ceza' }, // Listening
-        { type: 3, name: 'Seni izliyor...' } // Watching
+        { type: 0, name: 'The Last of Us™' }, // Playing
+        { type: 2, name: '🎵 Müzik keyfi zamanı' }, // Listening
+        { type: 3, name: '👀 Sizi izliyorum...' } // Watching
     ];
     
     let presenceIndex = 0;
@@ -148,7 +166,7 @@ client.once(Events.ClientReady, async () => {
     }, 5000);
     
     // Rotate presence every 10 minutes
-    setInterval(updatePresence, 10 * 60 * 1000);
+    setInterval(updatePresence, 4 * 60 * 1000);
     
     // Initialize voice activity manager after bot is ready
     voiceManager = new VoiceActivityManager(client);
@@ -459,7 +477,7 @@ client.on(Events.InteractionCreate, async interaction => {
             
             // Handle Rate Management buttons
             if (action === 'rate') {
-                const rateCommand = client.commands.get('oran-yonetimi');
+                const rateCommand = client.commands.get('oranyonetimi');
                 if (!rateCommand) {
                     return interaction.reply({
                         content: '❌ Rate management command not found!',
@@ -510,7 +528,7 @@ client.on(Events.InteractionCreate, async interaction => {
             
             // Handle Quick Set buttons
             if (action === 'quickset') {
-                const rateCommand = client.commands.get('oran-yonetimi');
+                const rateCommand = client.commands.get('oranyonetimi');
                 if (!rateCommand) {
                     return interaction.reply({
                         content: '❌ Rate management command not found!',
@@ -547,7 +565,7 @@ client.on(Events.InteractionCreate, async interaction => {
             
             // Handle Calculate buttons
             if (action === 'calc') {
-                const rateCommand = client.commands.get('oran-yonetimi');
+                const rateCommand = client.commands.get('oranyonetimi');
                 if (!rateCommand) {
                     return interaction.reply({
                         content: '❌ Rate management command not found!',
@@ -1258,27 +1276,27 @@ client.handleHelpButtons = async (interaction, category) => {
                         },
                         {
                             name: '🎭 **Seviye Rol Yönetimi**',
-                            value: '`/rol-yonetimi ekle [seviye] [rol]` - Seviye için rol ayarla\n`/rol-yonetimi kaldir [seviye]` - Seviye rolünü kaldır\n`/rol-yonetimi liste` - Tüm seviye rollerini göster',
+                            value: '`/rolyonetimi ekle [seviye] [rol]` - Seviye için rol ayarla\n`/rolyonetimi kaldir [seviye]` - Seviye rolünü kaldır\n`/rolyonetimi liste` - Tüm seviye rollerini göster',
                             inline: false
                         },
                         {
                             name: '📊 Oran Yönetimi',
-                            value: '`/oran-yonetimi goster` - Detaylı oran analizi\n`/oran-yonetimi hizli-ayar` - Ön tanımlı profiller\n`/oran-yonetimi ozel-ayar` - Özel oran ayarlama\n`/oran-yonetimi hesaplama` - Kazanç hesaplama\n`/oran-yonetimi karsilastir` - Profil karşılaştırma',
+                            value: '`/oranyonetimi goster` - Detaylı oran analizi\n`/oranyonetimi hizli-ayar` - Ön tanımlı profiller\n`/oranyonetimi hesaplama` - Kazanç hesaplama\n`/oranyonetimi karsilastir` - Profil karşılaştırma',
                             inline: false
                         },
                         {
                             name: '📢 Kanal Ayarlari',
-                            value: '`/kanal-ayarla goster` - Mevcut ayarlar\n`/kanal-ayarla seviye-atlamasi` - Seviye duyuru kanali\n`/kanal-ayarla hosgeldin` - Hosgeldin kanali\n`/kanal-ayarla duyurular` - Bot duyuru kanali',
+                            value: '`/kanalayarla goster` - Mevcut ayarlar\n`/kanalayarla seviye-atlamasi` - Seviye duyuru kanali\n`/kanalayarla hosgeldin` - Hosgeldin kanali\n`/kanalayarla duyurular` - Bot duyuru kanali',
                             inline: false
                         },
                         {
                             name: '🎤 Ses Aktivitesi',
-                            value: '`/ses-ayarlari goster` - Mevcut ayarlar\n`/ses-ayarlari minimum-uyeler` - Minimum kişi sayısı\n`/ses-durumu` - Aktif ses durumu',
+                            value: '`/sesayarlari goster` - Mevcut ayarlar\n`/sesayarlari minimum-uyeler` - Minimum kişi sayısı\n`/sesdurumu` - Aktif ses durumu',
                             inline: false
                         },
                         {
                             name: '📋 Bilgi Komutlari',
-                            value: '`/sunucu-bilgi` - Sunucu detaylari\n`/kullanici-bilgi [@kullanici]` - Kullanici bilgileri',
+                            value: '`/sunucubilgi` - Sunucu detaylari\n`/kullanici [@kullanici]` - Kullanici bilgileri',
                             inline: false
                         },
                         {

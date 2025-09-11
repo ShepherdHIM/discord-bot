@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ActionRowBuilder
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('oran_yonetimi')
+        .setName('oranyonetimi')
         .setDescription('Kapsamlı XP ve coin oran yönetim sistemi')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommand(subcommand =>

@@ -62,22 +62,22 @@ module.exports = {
                 },
                 {
                     name: '🎭 Roller & Seviyeler',
-                    value: '`/rol-yonetimi` - Seviye rollerini yonetin\nOtomatik rol atamasi',
+                    value: '`/rolyonetimi` - Seviye rollerini yonetin\nOtomatik rol atamasi',
                     inline: true
                 },
                 {
                     name: '🎤 Ses Aktivitesi',
-                    value: '`/ses-durumu` - Aktif ses kullanicilari\n`/ses-ayarlari` - Yonetici ayarlari',
+                    value: '`/sesdurumu` - Aktif ses kullanicilari\n`/sesayarlari` - Yonetici ayarlari',
                     inline: true
                 },
                 {
                     name: '⚙️ Sunucu Yonetimi',
-                    value: '`/kanal-ayarla` - Duyuru kanallari\n`/admin` - XP/Coin oran yönetimi\n`/sunucu-bilgi` - Sunucu bilgileri',
+                    value: '`/kanalayarla` - Duyuru kanallari\n`/yonetici` - XP/Coin oran yönetimi\n`/sunucubilgi` - Sunucu bilgileri',
                     inline: true
                 },
                 {
                     name: '🛠️ Genel Komutlar',
-                    value: '`/ping` - Bot gecikme testi\n`/bilgi-yarismasi` - Bilgi oyunu\n`/support` - Destek mesaji\n`/yardim` - Bu yardim menusu',
+                    value: '`/ping` - Bot gecikme testi\n`/bilgiyarismasi` - Bilgi oyunu\n`/destek` - Destek veya hata bildirimi gönder\n`/yardim` - Bu yardim menusu',
                     inline: true
                 }
             )
@@ -312,7 +312,7 @@ module.exports = {
             .addFields(
                 {
                     name: '👑 Admin Komutları',
-                    value: '`/admin xp-ver` - Kullanıcıya XP ver\n`/admin coin-ver` - Kullanıcıya coin ver\n`/admin xp-al` - Kullanıcıdan XP al\n`/admin coin-al` - Kullanıcıdan coin al\n`/admin sifirla` - Tüm istatistikleri sıfırla',
+                    value: '`/yonetici xp-ver` - Kullanıcıya XP ver\n`/yonetici coin-ver` - Kullanıcıya coin ver\n`/yonetici xp-al` - Kullanıcıdan XP al\n`/yonetici coin-al` - Kullanıcıdan coin al\n`/yonetici sifirla` - Tüm istatistikleri sıfırla',
                     inline: false
                 },
                 {
@@ -322,27 +322,27 @@ module.exports = {
                 },
                 {
                     name: '🎭 **Seviye Rol Yönetimi**',
-                    value: '`/rol-yonetimi ekle [seviye] [rol]` - Seviye için rol ayarla\n`/rol-yonetimi kaldir [seviye]` - Seviye rolünü kaldır\n`/rol-yonetimi liste` - Tüm seviye rollerini göster',
+                    value: '`/rolyonetimi ekle [seviye] [rol]` - Seviye için rol ayarla\n`/rolyonetimi kaldir [seviye]` - Seviye rolünü kaldır\n`/rolyonetimi liste` - Tüm seviye rollerini göster',
                     inline: false
                 },
                 {
                     name: '📊 Oran Yönetimi',
-                    value: '`/oran-yonetimi goster` - Detaylı oran analizi\n`/oran-yonetimi hizli-ayar` - Ön tanımlı profiller\n`/oran-yonetimi ozel-ayar` - Özel oran ayarlama\n`/oran-yonetimi hesaplama` - Kazanç hesaplama\n`/oran-yonetimi karsilastir` - Profil karşılaştırma',
+                    value: '`/oranyonetimi goster` - Detaylı oran analizi\n`/oranyonetimi hizli-ayar` - Ön tanımlı profiller\n`/oranyonetimi hesaplama` - Kazanç hesaplama\n`/oranyonetimi karsilastir` - Profil karşılaştırma',
                     inline: false
                 },
                 {
                     name: '📢 Kanal Ayarlari',
-                    value: '`/kanal-ayarla goster` - Mevcut ayarlar\n`/kanal-ayarla seviye-atlamasi` - Seviye duyuru kanali\n`/kanal-ayarla hosgeldin` - Hosgeldin kanali\n`/kanal-ayarla duyurular` - Bot duyuru kanali',
+                    value: '`/kanalayarla goster` - Mevcut ayarlar\n`/kanalayarla seviye-atlamasi` - Seviye duyuru kanali\n`/kanalayarla hosgeldin` - Hosgeldin kanali\n`/kanalayarla duyurular` - Bot duyuru kanali',
                     inline: false
                 },
                 {
                     name: '🎤 Ses Aktivitesi',
-                    value: '`/ses-ayarlari goster` - Mevcut ayarlar\n`/ses-ayarlari minimum-uyeler` - Minimum kişi sayısı\n`/ses-durumu` - Aktif ses durumu',
+                    value: '`/sesayarlari goster` - Mevcut ayarlar\n`/sesayarlari minimum-uyeler` - Minimum kişi sayısı\n`/sesdurumu` - Aktif ses durumu',
                     inline: false
                 },
                 {
                     name: '📋 Bilgi Komutlari',
-                    value: '`/sunucu-bilgi` - Sunucu detaylari\n`/kullanici-bilgi [@kullanici]` - Kullanici bilgileri',
+                    value: '`/sunucubilgi` - Sunucu detaylari\n`/kullanici [@kullanici]` - Kullanici bilgileri',
                     inline: false
                 },
                 {
@@ -366,17 +366,17 @@ module.exports = {
                 },
                 {
                     name: '🧠 Egitim & Eglence',
-                    value: '`/bilgi-yarismasi` - Bilgi sorulari\n`/soyle [mesaj]` - Bot ile mesaj',
+                    value: '`/bilgiyarismasi` - Bilgi sorulari\n`/soyle [mesaj]` - Bot ile mesaj',
                     inline: false
                 },
                 {
                     name: '📞 Destek & Iletisim',
-                    value: '`/support` - Destek mesaji gonder\nHave a question? Get help with the /help command!',
+                    value: '`/destek` - Destek veya hata bildirimi gönder\nSorunuz mu var? /yardim komutu ile yardım alabilirsiniz!',
                     inline: false
                 },
                 {
                     name: '📊 Bilgi Komutlari',
-                    value: '`/kullanici-bilgi` - Kullanici profili\n`/sunucu-bilgi` - Sunucu istatistikleri',
+                    value: '`/kullanici` - Kullanici profili\n`/sunucubilgi` - Sunucu istatistikleri',
                     inline: false
                 }
             );

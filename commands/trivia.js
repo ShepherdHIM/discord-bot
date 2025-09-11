@@ -2,7 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('bilgi_yarismasi')
+        .setName('bilgiyarismasi')
         .setDescription('XP ve coin kazanmak icin bilgi yarismasi oynayin!')
         .addStringOption(option =>
             option.setName('kategori')

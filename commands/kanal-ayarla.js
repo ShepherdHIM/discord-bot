@@ -46,7 +46,7 @@ const saveServerSettings = (guildId, settings) => {
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('kanal_ayarla')
+        .setName('kanalayarla')
         .setDescription('Sunucuya özel kanal ayarlarını yapılandır')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option =>
