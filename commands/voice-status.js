@@ -28,7 +28,7 @@ module.exports = {
             .setThumbnail(guild.iconURL())
             .setTimestamp();
         
-        const guildSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const guildSettings = await voiceManager.getGuildSettings(interaction.guildId);
         let totalEarning = 0;
         let totalMembers = 0;
         

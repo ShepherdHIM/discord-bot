@@ -60,6 +60,17 @@ class VoiceActivityDB {
     async endVoiceSession(sessionId, durationMinutes, earnedXP, earnedCoins) { /* no-op for memory store */ }
     async updateSessionMuteStatus(sessionId, isMuted, isDeafened) { /* no-op */ }
     async getActiveRewardRanges(guildId) { return this.rewardRanges.get(guildId) || []; }
+    async addRewardRange(guildId, rewardType, minAmount, maxAmount, duration) {
+        const ranges = this.rewardRanges.get(guildId) || [];
+        ranges.push({
+            reward_type: rewardType,
+            min_amount: minAmount,
+            max_amount: maxAmount,
+            duration: duration
+        });
+        this.rewardRanges.set(guildId, ranges);
+        return true;
+    }
     async getLevelRoles(guildId) { return this.levelRoles.get(guildId) || []; }
     async getLevelRole(guildId, level) {
         const list = this.levelRoles.get(guildId) || [];

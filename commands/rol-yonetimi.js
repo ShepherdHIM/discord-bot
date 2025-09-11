@@ -73,7 +73,7 @@ module.exports = {
             }
             
             // Add level role to database
-            const success = await voiceManager.db.addLevelRole(
+            const success = await voiceManager.addLevelRole(
                 interaction.guildId, 
                 level, 
                 role.id, 
@@ -102,7 +102,7 @@ module.exports = {
             const level = interaction.options.getInteger('seviye');
             
             // Remove level role from database
-            const success = await voiceManager.db.removeLevelRole(interaction.guildId, level);
+            const success = await voiceManager.removeLevelRole(interaction.guildId, level);
             
             if (success) {
                 const embed = new EmbedBuilder()
@@ -123,7 +123,7 @@ module.exports = {
         
         if (subcommand === 'liste') {
             // Get all level roles for this guild
-            const levelRoles = await voiceManager.db.getLevelRoles(interaction.guildId);
+            const levelRoles = await voiceManager.getLevelRoles(interaction.guildId);
             
             if (levelRoles.length === 0) {
                 return interaction.editReply({ 

@@ -222,7 +222,7 @@ module.exports = {
                 });
             }
             
-            const success = await voiceManager.db.addRewardRange(
+            const success = await voiceManager.addRewardRange(
                 interaction.guildId, 
                 'xp', 
                 minAmount, 
@@ -259,7 +259,7 @@ module.exports = {
                 });
             }
             
-            const success = await voiceManager.db.addRewardRange(
+            const success = await voiceManager.addRewardRange(
                 interaction.guildId, 
                 'coin', 
                 minAmount, 
@@ -286,7 +286,7 @@ module.exports = {
         }
         
         if (subcommand === 'range-liste') {
-            const rewardRanges = await voiceManager.db.getRewardRanges(interaction.guildId);
+            const rewardRanges = await voiceManager.getActiveRewardRanges(interaction.guildId);
             
             if (rewardRanges.length === 0) {
                 return interaction.editReply({ 
@@ -332,13 +332,13 @@ module.exports = {
         if (subcommand === 'xp-orani') {
             const xpPerMinute = interaction.options.getInteger('miktar');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 xp_per_minute: xpPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -354,13 +354,13 @@ module.exports = {
         if (subcommand === 'coin-orani') {
             const coinsPerMinute = interaction.options.getInteger('miktar');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 coins_per_minute: coinsPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -376,13 +376,13 @@ module.exports = {
         if (subcommand === 'xp-time') {
             const xpIntervalMinutes = interaction.options.getInteger('dakika');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 xp_interval_minutes: xpIntervalMinutes
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -398,13 +398,13 @@ module.exports = {
         if (subcommand === 'coin-time') {
             const coinIntervalMinutes = interaction.options.getInteger('dakika');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 coin_interval_minutes: coinIntervalMinutes
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -418,7 +418,7 @@ module.exports = {
         }
         
         if (subcommand === 'oranlar-goster') {
-            const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const settings = await voiceManager.getGuildSettings(interaction.guildId);
             
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
@@ -448,14 +448,14 @@ module.exports = {
             const xpPerMinute = interaction.options.getInteger('xp-miktar');
             const coinsPerMinute = interaction.options.getInteger('coin-miktar');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 xp_per_minute: xpPerMinute,
                 coins_per_minute: coinsPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -535,7 +535,7 @@ module.exports = {
         }
         
         // Update user stats
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             targetUser.id,
             interaction.guildId,
             newXP,

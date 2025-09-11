@@ -40,14 +40,14 @@ module.exports = {
         
         switch (type) {
             case 'xp':
-                leaderboard = await voiceManager.db.getXPLeaderboard(interaction.guildId, limit);
+                leaderboard = await voiceManager.getXPLeaderboard(interaction.guildId, limit);
                 title = 'XP Liderlik Tablosu';
                 emoji = '🏆';
                 field = 'total_xp';
                 unit = 'XP';
                 break;
             case 'coins':
-                leaderboard = await voiceManager.db.getCoinLeaderboard(interaction.guildId, limit);
+                leaderboard = await voiceManager.getCoinLeaderboard(interaction.guildId, limit);
                 title = 'Coin Liderlik Tablosu';
                 emoji = '🪙';
                 field = 'coins';

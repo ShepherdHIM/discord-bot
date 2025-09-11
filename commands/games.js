@@ -202,7 +202,7 @@ module.exports = {
         const newCoins = userStats.coins + winAmount;
         
         // Update user coins
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id, 
             interaction.guildId, 
             userStats.total_xp, 
@@ -276,7 +276,7 @@ module.exports = {
         const newCoins = userStats.coins + winAmount;
         
         // Update user coins
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id, 
             interaction.guildId, 
             userStats.total_xp, 
@@ -325,7 +325,7 @@ module.exports = {
         const newXP = userStats.total_xp + xpBonus;
         
         // Update user stats
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id, 
             interaction.guildId, 
             newXP, 
@@ -388,7 +388,7 @@ module.exports = {
         const newCoins = userStats.coins + winAmount;
         
         // Update user coins
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id, 
             interaction.guildId, 
             userStats.total_xp, 
@@ -450,7 +450,7 @@ module.exports = {
         const newCoins = userStats.coins + winAmount;
         
         // Update user coins
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id, 
             interaction.guildId, 
             userStats.total_xp, 
@@ -560,7 +560,7 @@ module.exports = {
         const newCoins = userStats.coins + winAmount;
         
         // Update user coins
-        await voiceManager.db.updateUserStats(
+        await voiceManager.updateUserStats(
             interaction.user.id,
             interaction.guildId,
             userStats.total_xp,
@@ -844,7 +844,7 @@ module.exports = {
             );
             
             // Transfer coins
-            await gameData.voiceManager.db.updateUserStats(
+            await gameData.voiceManager.updateUserStats(
                 winner.id, 
                 gameData.guildId, 
                 winnerStats.total_xp, 
@@ -852,7 +852,7 @@ module.exports = {
                 winnerStats.voice_time_minutes
             );
             
-            await gameData.voiceManager.db.updateUserStats(
+            await gameData.voiceManager.updateUserStats(
                 winner.id === gameData.challenger ? gameData.opponent : gameData.challenger, 
                 gameData.guildId, 
                 loserStats.total_xp, 
@@ -958,7 +958,7 @@ module.exports = {
     
     async getLastDaily(userId, guildId, voiceManager) {
         try {
-            const result = await voiceManager.db.dbGet(
+            const result = await voiceManager.dbGet(
                 'SELECT claimed_at FROM daily_claims WHERE user_id = ? AND guild_id = ? ORDER BY claimed_at DESC LIMIT 1',
                 [userId, guildId]
             );
@@ -970,7 +970,7 @@ module.exports = {
     
     async recordDailyClaim(userId, guildId, voiceManager) {
         try {
-            await voiceManager.db.dbRun(
+            await voiceManager.dbRun(
                 'INSERT INTO daily_claims (user_id, guild_id, claimed_at) VALUES (?, ?, CURRENT_TIMESTAMP)',
                 [userId, guildId]
             );

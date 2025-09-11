@@ -284,13 +284,13 @@ module.exports = {
     async calculateAdvancedStats(stats, voiceManager, guildId) {
         try {
             // Get session count from database
-            const sessionQuery = await voiceManager.db.dbAll(
+            const sessionQuery = await voiceManager.dbAll(
                 'SELECT COUNT(*) as total, AVG(duration_minutes) as avg_duration FROM voice_sessions WHERE user_id = ? AND guild_id = ? AND duration_minutes > 0',
                 [stats.user_id, guildId]
             );
             
             // Get total users count
-            const totalUsersQuery = await voiceManager.db.dbGet(
+            const totalUsersQuery = await voiceManager.dbGet(
                 'SELECT COUNT(DISTINCT user_id) as total FROM users WHERE guild_id = ?',
                 [guildId]
             );

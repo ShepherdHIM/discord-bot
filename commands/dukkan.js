@@ -186,7 +186,7 @@ module.exports = {
                 },
                 {
                     name: '📞 **Destek**',
-                    value: 'Sorunuz mu var? `/destek` komutu ile bizimle iletişime geçin!\n\n**Bot:** Kratos#7768\n**Geliştirici:** Shepherd',
+                    value: 'Sorunuz mu var? `/yardim` komutu ile yardım alabilirsiniz!\n\n**Bot:** Kratos#7768\n**Geliştirici:** Shepherd',
                     inline: true
                 }
             )

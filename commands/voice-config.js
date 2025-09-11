@@ -74,7 +74,7 @@ module.exports = {
         const subcommand = interaction.options.getSubcommand();
         
         if (subcommand === 'goster') {
-            const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const settings = await voiceManager.getGuildSettings(interaction.guildId);
             
             const embed = new EmbedBuilder()
                 .setColor('#0099ff')
@@ -135,13 +135,13 @@ module.exports = {
         else if (subcommand === 'xp_orani') {
             const xpPerMinute = interaction.options.getInteger('miktar');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 xp_per_minute: xpPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -157,13 +157,13 @@ module.exports = {
         else if (subcommand === 'coin_orani') {
             const coinsPerMinute = interaction.options.getInteger('miktar');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 coins_per_minute: coinsPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -179,13 +179,13 @@ module.exports = {
         else if (subcommand === 'minimum_uyeler') {
             const minMembers = interaction.options.getInteger('sayi');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 min_members_required: minMembers
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -201,13 +201,13 @@ module.exports = {
         else if (subcommand === 'susturulmus_odul') {
             const enabled = interaction.options.getBoolean('etkin');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 muted_users_earn: enabled
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -223,13 +223,13 @@ module.exports = {
         else if (subcommand === 'sagirlastirilmis_odul') {
             const enabled = interaction.options.getBoolean('etkin');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 deafened_users_earn: enabled
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -245,13 +245,13 @@ module.exports = {
         else if (subcommand === 'afk_haric') {
             const exclude = interaction.options.getBoolean('haric-tut');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 exclude_afk_channel: exclude
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -268,14 +268,14 @@ module.exports = {
             const xpPerMinute = interaction.options.getInteger('xp-per-minute');
             const coinsPerMinute = interaction.options.getInteger('coins-per-minute');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = {
                 ...currentSettings,
                 xp_per_minute: xpPerMinute,
                 coins_per_minute: coinsPerMinute
             };
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')
@@ -295,7 +295,7 @@ module.exports = {
             const mutedUsersEarn = interaction.options.getBoolean('muted-users-earn');
             const deafenedUsersEarn = interaction.options.getBoolean('deafened-users-earn');
             
-            const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+            const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
             const newSettings = { ...currentSettings };
             
             if (minMembers !== null) newSettings.min_members_required = minMembers;
@@ -303,7 +303,7 @@ module.exports = {
             if (mutedUsersEarn !== null) newSettings.muted_users_earn = mutedUsersEarn;
             if (deafenedUsersEarn !== null) newSettings.deafened_users_earn = deafenedUsersEarn;
             
-            await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+            await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
             
             const embed = new EmbedBuilder()
                 .setColor('#00ff00')

@@ -94,7 +94,7 @@ module.exports = {
     },
     
     async showRates(interaction, voiceManager) {
-        const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const settings = await voiceManager.getGuildSettings(interaction.guildId);
         
         // Calculate various time frame earnings
         const hourlyXP = settings.xp_per_minute * 60;
@@ -161,14 +161,14 @@ module.exports = {
         
         const selectedProfile = rateProfiles[profile];
         
-        const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
         const newSettings = {
             ...currentSettings,
             xp_per_minute: selectedProfile.xp,
             coins_per_minute: selectedProfile.coin
         };
         
-        await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+        await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
         
         const embed = new EmbedBuilder()
             .setColor('#00ff00')
@@ -195,14 +195,14 @@ module.exports = {
         const xpRate = interaction.options.getInteger('xp');
         const coinRate = interaction.options.getInteger('coin');
         
-        const currentSettings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const currentSettings = await voiceManager.getGuildSettings(interaction.guildId);
         const newSettings = {
             ...currentSettings,
             xp_per_minute: xpRate,
             coins_per_minute: coinRate
         };
         
-        await voiceManager.db.updateGuildSettings(interaction.guildId, newSettings);
+        await voiceManager.updateGuildSettings(interaction.guildId, newSettings);
         
         const embed = new EmbedBuilder()
             .setColor('#00ff00')
@@ -227,7 +227,7 @@ module.exports = {
     
     async calculateEarnings(interaction, voiceManager, minutes = null) {
         const timeMinutes = minutes || interaction.options?.getInteger('dakika');
-        const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const settings = await voiceManager.getGuildSettings(interaction.guildId);
         
         const totalXP = settings.xp_per_minute * timeMinutes;
         const totalCoins = settings.coins_per_minute * timeMinutes;
@@ -258,7 +258,7 @@ module.exports = {
     },
     
     async compareRates(interaction, voiceManager) {
-        const settings = await voiceManager.db.getGuildSettings(interaction.guildId);
+        const settings = await voiceManager.getGuildSettings(interaction.guildId);
         
         const profiles = {
             'Düşük': { xp: 1, coin: 1 },

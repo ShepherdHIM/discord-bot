@@ -68,7 +68,7 @@ module.exports = {
             
             // Calculate potential rewards based on difficulty and reward ranges
             let xpReward, coinReward;
-            const rewardRanges = await voiceManager.db.getActiveRewardRanges(interaction.guildId);
+            const rewardRanges = await voiceManager.getActiveRewardRanges(interaction.guildId);
             const xpRanges = rewardRanges.filter(range => range.reward_type === 'xp');
             const coinRanges = rewardRanges.filter(range => range.reward_type === 'coin');
             
@@ -136,7 +136,7 @@ module.exports = {
                         await interaction.editReply({ embeds: [timeoutEmbed], components: [] });
                         
                         // Give small consolation XP
-                        await triviaData.voiceManager.db.updateUserStats(
+                        await triviaData.voiceManager.updateUserStats(
                             interaction.user.id,
                             interaction.guildId,
                             triviaData.userStats.total_xp + 2,
@@ -383,7 +383,7 @@ module.exports = {
         }
         
         // Update user stats
-        await triviaData.voiceManager.db.updateUserStats(
+        await triviaData.voiceManager.updateUserStats(
             interaction.user.id,
             interaction.guildId,
             newXP,
