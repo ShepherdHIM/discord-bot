@@ -181,9 +181,27 @@ client.once(Events.ClientReady, async () => {
             client.musicPlayer = musicPlayer; // Attach to client for command access
             console.log('🎵 Music player initialized successfully!');
             console.log('🎵 Music player attached to client:', !!client.musicPlayer);
+            
+            // Set up periodic health checks for the music player
+            setInterval(async () => {
+                if (client.musicPlayer && !client.musicPlayer.isPlayerHealthy()) {
+                    console.log('⚠️ Music player health check failed, attempting restart...');
+                    try {
+                        await client.musicPlayer.restartPlayer();
+                        console.log('✅ Music player restarted successfully');
+                    } catch (restartError) {
+                        console.error('❌ Failed to restart music player:', restartError);
+                        // If restart fails multiple times, disable music features
+                        client.musicPlayer = null;
+                        console.log('🎵 Music player disabled due to repeated failures');
+                    }
+                }
+            }, 5 * 60 * 1000); // Check every 5 minutes
+            
         } catch (error) {
             console.error('❌ Music player initialization failed:', error.message);
             console.log('🎵 Music player will not be available');
+            console.log('🎵 Bot will continue running without music features');
             // Set a dummy music player to prevent crashes
             client.musicPlayer = null;
         }
@@ -454,9 +472,10 @@ client.on(Events.InteractionCreate, async interaction => {
             } else if (action2 === 'trivia') {
                 // Handle Trivia game
                 await client.handleTriviaAnswer(interaction);
-            } else if (action2 === 'music') {
+            } else if (action === 'music') {
                 // Handle Music controls
-                await client.handleMusicControls(interaction, userId);
+                const musicAction = customIdParts[customIdParts.length - 1]; // Get the action from the button ID
+                await client.handleMusicControls(interaction, musicAction);
             } else if (action2 === 'help') {
                 // Handle Help category buttons
                 // Extract category from help_[category] format
@@ -891,13 +910,13 @@ client.handleMusicControls = async (interaction, action) => {
                 
             case 'queue':
                 // Show queue in ephemeral message
-                const musicCommand = client.commands.get('music');
+                const musicCommand = client.commands.get('muzik');
                 if (musicCommand) {
                     const mockInteraction = {
                         ...interaction,
                         client: client,
                         options: {
-                            getSubcommand: () => 'queue'
+                            getSubcommand: () => 'sira'
                         },
                         reply: (options) => interaction.reply({ ...options, ephemeral: true })
                     };
@@ -926,10 +945,22 @@ client.handleMusicControls = async (interaction, action) => {
         }
     } catch (error) {
         console.error('Error handling music controls:', error);
-        await interaction.reply({
-            content: '❌ Müzik kontrolünü işlerken bir hata oluştu!',
-            ephemeral: true
+        console.error('Music control error details:', {
+            message: error.message,
+            stack: error.stack,
+            action: action,
+            guildId: interaction.guild.id,
+            userId: interaction.user.id
         });
+        
+        try {
+            await interaction.reply({
+                content: '❌ Müzik kontrolünü işlerken bir hata oluştu!',
+                ephemeral: true
+            });
+        } catch (replyError) {
+            console.error('Failed to send error reply:', replyError);
+        }
     }
     
     // Track browser login activity

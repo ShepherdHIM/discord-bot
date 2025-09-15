@@ -24,17 +24,35 @@ class MusicPlayerManager {
         try {
             // Try to register discord-player-youtubei first (preferred)
             const { YoutubeiExtractor } = require('discord-player-youtubei');
-            this.player.extractors.register(YoutubeiExtractor, {});
+            this.player.extractors.register(YoutubeiExtractor, {
+                cookie: process.env.YOUTUBE_COOKIE || undefined,
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            });
             console.log('✅ Youtubei extractor registered');
         } catch (error) {
             console.log('⚠️ Youtubei extractor not available, using default');
+            console.log('Youtubei error:', error.message);
+            
             // Fallback to default extractors
             try {
                 const { YoutubeExtractor } = require('@discord-player/extractor');
-                this.player.extractors.register(YoutubeExtractor, {});
+                this.player.extractors.register(YoutubeExtractor, {
+                    cookie: process.env.YOUTUBE_COOKIE || undefined,
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                });
                 console.log('✅ Default YouTube extractor registered');
             } catch (fallbackError) {
                 console.log('⚠️ No YouTube extractors available');
+                console.log('Fallback error:', fallbackError.message);
+                
+                // Try to register any available extractor
+                try {
+                    const { SoundCloudExtractor } = require('@discord-player/extractor');
+                    this.player.extractors.register(SoundCloudExtractor, {});
+                    console.log('✅ SoundCloud extractor registered as fallback');
+                } catch (soundcloudError) {
+                    console.log('❌ No extractors available at all');
+                }
             }
         }
     }
@@ -77,37 +95,91 @@ class MusicPlayerManager {
         // Error handling
         this.player.events.on('error', (queue, error) => {
             console.error('Music player error:', error);
+            console.error('Error details:', {
+                message: error.message,
+                stack: error.stack,
+                guildId: queue.guild.id,
+                channelId: queue.connection?.joinConfig?.channelId
+            });
+            
             if (queue.metadata?.channel) {
-                queue.metadata.channel.send('❌ Something went wrong with the music player!');
+                queue.metadata.channel.send('❌ Something went wrong with the music player! Attempting to recover...');
             }
+            
+            // Attempt recovery for general errors
+            this.attemptPlayerRecovery(queue, error);
         });
         
         // Connection error
         this.player.events.on('connectionError', (queue, error) => {
             console.error('Connection error:', error);
+            console.error('Connection error details:', {
+                message: error.message,
+                stack: error.stack,
+                guildId: queue.guild.id,
+                channelId: queue.connection?.joinConfig?.channelId
+            });
+            
             if (queue.metadata?.channel) {
-                queue.metadata.channel.send('❌ Failed to connect to voice channel!');
+                queue.metadata.channel.send('❌ Failed to connect to voice channel! Attempting to reconnect...');
             }
+            
+            // Attempt recovery for connection errors
+            this.attemptPlayerRecovery(queue, error);
         });
         
         // Track error
         this.player.events.on('trackError', (queue, error) => {
             console.error('Track error:', error);
+            console.error('Track error details:', {
+                message: error.message,
+                stack: error.stack,
+                guildId: queue.guild.id,
+                currentTrack: queue.currentTrack?.title,
+                trackUrl: queue.currentTrack?.url
+            });
+            
             if (queue.metadata?.channel) {
                 queue.metadata.channel.send('❌ Error playing track. Skipping to next...');
             }
+            
             // Auto-skip the problematic track
             if (queue.tracks.size > 0) {
-                queue.node.skip();
+                try {
+                    queue.node.skip();
+                    console.log('✅ Skipped problematic track');
+                } catch (skipError) {
+                    console.error('❌ Failed to skip track:', skipError);
+                    // If skip fails, try recovery
+                    this.attemptPlayerRecovery(queue, error);
+                }
+            } else {
+                // No more tracks, try recovery
+                this.attemptPlayerRecovery(queue, error);
             }
         });
         
         // Player error
         this.player.events.on('playerError', (queue, error) => {
-            console.error('Player error:', error);
+            console.error('🎵 Player error occurred:', error.message);
+            console.error('🎵 Error details:', {
+                message: error.message,
+                code: error.code,
+                guildId: queue.guild.id,
+                channelId: queue.connection?.joinConfig?.channelId,
+                currentTrack: queue.currentTrack?.title,
+                queueSize: queue.tracks.size,
+                isPlaying: queue.node.isPlaying(),
+                isPaused: queue.node.isPaused()
+            });
+            
+            // Send user-friendly message
             if (queue.metadata?.channel) {
                 queue.metadata.channel.send('❌ Player error occurred. Trying to recover...');
             }
+            
+            // Attempt recovery with more specific handling
+            this.attemptPlayerRecovery(queue, error);
         });
     }
     
@@ -128,32 +200,44 @@ class MusicPlayerManager {
     // Helper function to safely reply to interactions
     async safeReply(interaction, content, options = {}) {
         try {
-            // Since we defer in the main command, always use editReply
-            return await interaction.editReply(content);
+            // Check interaction state and respond appropriately
+            if (!interaction.replied && !interaction.deferred) {
+                return await interaction.reply({ content, ...options });
+            } else if (interaction.deferred) {
+                return await interaction.editReply(content);
+            } else {
+                return await interaction.followUp({ content, ...options });
+            }
         } catch (error) {
             console.error('Error in safeReply:', error);
-            // Try to send a follow-up message if all else fails
-            try {
-                return await interaction.followUp({ content, ...options });
-            } catch (followUpError) {
-                console.error('Error in followUp:', followUpError);
-            }
+            // Interaction might be expired or already acknowledged
+            console.log('Interaction state:', {
+                replied: interaction.replied,
+                deferred: interaction.deferred,
+                age: Date.now() - interaction.createdTimestamp
+            });
         }
     }
 
     // Helper function to safely reply with embeds
     async safeReplyEmbed(interaction, embed, options = {}) {
         try {
-            // Since we defer in the main command, always use editReply
-            return await interaction.editReply({ embeds: [embed], ...options });
+            // Check interaction state and respond appropriately
+            if (!interaction.replied && !interaction.deferred) {
+                return await interaction.reply({ embeds: [embed], ...options });
+            } else if (interaction.deferred) {
+                return await interaction.editReply({ embeds: [embed], ...options });
+            } else {
+                return await interaction.followUp({ embeds: [embed], ...options });
+            }
         } catch (error) {
             console.error('Error in safeReplyEmbed:', error);
-            // Try to send a follow-up message if all else fails
-            try {
-                return await interaction.followUp({ embeds: [embed], ...options });
-            } catch (followUpError) {
-                console.error('Error in followUp:', followUpError);
-            }
+            // Interaction might be expired or already acknowledged
+            console.log('Interaction state:', {
+                replied: interaction.replied,
+                deferred: interaction.deferred,
+                age: Date.now() - interaction.createdTimestamp
+            });
         }
     }
     
@@ -166,13 +250,44 @@ class MusicPlayerManager {
         try {
             console.log(`🎵 Searching for: ${query}`);
             
-            const searchResult = await this.player.search(query, {
-                requestedBy: interaction.user,
-                searchEngine: 'youtube'
-            });
+            // Check if player is healthy before proceeding
+            if (!this.isPlayerHealthy()) {
+                console.log('⚠️ Player not healthy, attempting to restart...');
+                await this.restartPlayer();
+            }
+            
+            // Try different search engines if YouTube fails
+            let searchResult = null;
+            const searchEngines = ['youtube', 'youtubeMusic', 'soundcloud'];
+            
+            for (const engine of searchEngines) {
+                try {
+                    console.log(`🎵 Trying search engine: ${engine}`);
+                    
+                    // Add timeout to search operation
+                    const searchPromise = this.player.search(query, {
+                        requestedBy: interaction.user,
+                        searchEngine: engine
+                    });
+                    
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Search timeout')), 15000)
+                    );
+                    
+                    searchResult = await Promise.race([searchPromise, timeoutPromise]);
+                    
+                    if (searchResult && searchResult.tracks.length > 0) {
+                        console.log(`✅ Found ${searchResult.tracks.length} tracks using ${engine}`);
+                        break;
+                    }
+                } catch (searchError) {
+                    console.log(`⚠️ Search failed with ${engine}:`, searchError.message);
+                    continue;
+                }
+            }
             
             if (!searchResult || !searchResult.tracks.length) {
-                return interaction.editReply('❌ No results found for your search!');
+                return interaction.editReply('❌ No results found for your search! Please try:\n• A different song name\n• Including the artist name\n• A YouTube URL\n• A SoundCloud URL');
             }
             
             console.log(`🎵 Found ${searchResult.tracks.length} tracks`);
@@ -192,8 +307,14 @@ class MusicPlayerManager {
             
             if (!queue.connection) {
                 console.log(`🎵 Connecting to voice channel: ${channel.name}`);
-                await queue.connect(channel);
-                console.log(`✅ Connected to voice channel`);
+                try {
+                    await queue.connect(channel);
+                    console.log(`✅ Connected to voice channel`);
+                } catch (connectError) {
+                    console.error('❌ Failed to connect to voice channel:', connectError);
+                    await interaction.editReply('❌ Failed to connect to voice channel. Please try again.');
+                    return;
+                }
             }
             
             if (searchResult.playlist) {
@@ -241,13 +362,31 @@ class MusicPlayerManager {
                     guildData.songsPlayed++;
                 } catch (playError) {
                     console.error('❌ Error starting playback:', playError);
-                    await interaction.editReply('❌ Failed to start playback. The track might be unavailable or corrupted.');
+                    console.error('Playback error details:', {
+                        message: playError.message,
+                        stack: playError.stack,
+                        trackTitle: queue.currentTrack?.title,
+                        trackUrl: queue.currentTrack?.url
+                    });
+                    
+                    // Try to recover from playback error
+                    await this.attemptPlayerRecovery(queue, playError);
+                    
+                    await interaction.editReply('❌ Failed to start playback. Attempting to recover...');
                 }
             }
             
         } catch (error) {
             console.error('Error playing music:', error);
-            await interaction.editReply('❌ Something went wrong while trying to play music!');
+            console.error('Play error details:', {
+                message: error.message,
+                stack: error.stack,
+                query: query,
+                guildId: interaction.guild.id,
+                channelId: channel.id
+            });
+            
+            await interaction.editReply('❌ Something went wrong while trying to play music! Please try again.');
         }
     }
     
@@ -511,6 +650,181 @@ class MusicPlayerManager {
             }
         } catch (error) {
             console.error('Error awarding listening rewards:', error);
+        }
+    }
+    
+    // Check if player is healthy
+    isPlayerHealthy() {
+        try {
+            // Check if player exists and is not destroyed
+            if (!this.player || this.player.destroyed) {
+                return false;
+            }
+            
+            // Check if extractors are working
+            if (!this.player.extractors || this.player.extractors.size === 0) {
+                return false;
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('Error checking player health:', error);
+            return false;
+        }
+    }
+    
+    // Restart the player
+    async restartPlayer() {
+        try {
+            console.log('🔄 Restarting music player...');
+            
+            // Destroy the old player
+            if (this.player && !this.player.destroyed) {
+                this.player.destroy();
+            }
+            
+            // Wait a moment
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Create a new player
+            this.player = new Player(this.client, {
+                ytdlOptions: {
+                    quality: 'highestaudio',
+                    highWaterMark: 1 << 25
+                }
+            });
+            
+            // Re-register extractors
+            this.registerExtractors();
+            
+            // Re-setup events
+            this.setupPlayerEvents();
+            
+            console.log('✅ Music player restarted successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to restart music player:', error);
+            return false;
+        }
+    }
+    
+    // Player recovery method
+    async attemptPlayerRecovery(queue, error) {
+        try {
+            console.log('🔄 Attempting player recovery...');
+            console.log('🔄 Error type analysis:', {
+                message: error.message,
+                code: error.code,
+                includesConnection: error.message?.toLowerCase().includes('connection'),
+                includesVoice: error.message?.toLowerCase().includes('voice'),
+                includesTrack: error.message?.toLowerCase().includes('track'),
+                includesAudio: error.message?.toLowerCase().includes('audio'),
+                includesTimeout: error.message?.toLowerCase().includes('timeout'),
+                includesNetwork: error.message?.toLowerCase().includes('network')
+            });
+            
+            // Check if it's a connection issue
+            if (error.message?.toLowerCase().includes('connection') || 
+                error.message?.toLowerCase().includes('voice') ||
+                error.message?.toLowerCase().includes('timeout') ||
+                error.message?.toLowerCase().includes('network')) {
+                console.log('🔌 Connection-related error detected, attempting to reconnect...');
+                
+                // Try to reconnect
+                if (queue.connection) {
+                    try {
+                        await queue.connection.disconnect();
+                        await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+                        
+                        const channel = queue.metadata?.channel?.guild?.channels?.cache?.get(queue.connection.joinConfig?.channelId);
+                        if (channel) {
+                            await queue.connect(channel);
+                            console.log('✅ Successfully reconnected to voice channel');
+                            
+                            if (queue.metadata?.channel) {
+                                await queue.metadata.channel.send('✅ Successfully reconnected! Resuming playback...');
+                            }
+                            
+                            // Try to resume playback
+                            if (queue.tracks.size > 0 && !queue.node.isPlaying()) {
+                                await queue.node.play();
+                            }
+                            return;
+                        }
+                    } catch (reconnectError) {
+                        console.error('❌ Failed to reconnect:', reconnectError);
+                    }
+                }
+            }
+            
+            // Check if it's a track-specific issue
+            if (error.message?.toLowerCase().includes('track') || 
+                error.message?.toLowerCase().includes('audio') ||
+                error.message?.toLowerCase().includes('playback') ||
+                error.message?.toLowerCase().includes('stream')) {
+                console.log('🎵 Track/audio error detected, skipping problematic track...');
+                
+                if (queue.tracks.size > 0) {
+                    try {
+                        queue.node.skip();
+                        console.log('✅ Skipped problematic track');
+                        
+                        if (queue.metadata?.channel) {
+                            await queue.metadata.channel.send('✅ Skipped problematic track, continuing with next song...');
+                        }
+                        return;
+                    } catch (skipError) {
+                        console.error('❌ Failed to skip track:', skipError);
+                    }
+                }
+            }
+            
+            // Check if it's a YouTube/extractor issue
+            if (error.message?.toLowerCase().includes('youtube') || 
+                error.message?.toLowerCase().includes('extractor') ||
+                error.message?.toLowerCase().includes('search')) {
+                console.log('🔍 YouTube/extractor error detected, trying to restart player...');
+                
+                try {
+                    await this.restartPlayer();
+                    console.log('✅ Player restarted successfully');
+                    
+                    if (queue.metadata?.channel) {
+                        await queue.metadata.channel.send('✅ Player restarted successfully! Please try playing music again.');
+                    }
+                    return;
+                } catch (restartError) {
+                    console.error('❌ Failed to restart player:', restartError);
+                }
+            }
+            
+            // If all else fails, clear the queue and disconnect gracefully
+            console.log('⚠️ Recovery failed, clearing queue and disconnecting...');
+            
+            if (queue.metadata?.channel) {
+                await queue.metadata.channel.send('⚠️ Unable to recover from error. Clearing queue and disconnecting...');
+            }
+            
+            // Clear the queue and disconnect after a short delay
+            setTimeout(() => {
+                try {
+                    queue.delete();
+                } catch (deleteError) {
+                    console.error('Error deleting queue:', deleteError);
+                }
+            }, 5000);
+            
+        } catch (recoveryError) {
+            console.error('❌ Error during recovery attempt:', recoveryError);
+            
+            // Last resort: force disconnect
+            try {
+                if (queue.connection) {
+                    await queue.connection.disconnect();
+                }
+            } catch (disconnectError) {
+                console.error('Error during forced disconnect:', disconnectError);
+            }
         }
     }
     

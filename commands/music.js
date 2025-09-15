@@ -76,15 +76,26 @@ module.exports = {
         .addSubcommand(subcommand =>
             subcommand
                 .setName('istatistikler')
-                .setDescription('Muzik dinleme istatistiklerini goruntule')),
+                .setDescription('Muzik dinleme istatistiklerini goruntule'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('yeniden-baslat')
+                .setDescription('Muzik oynaticisini yeniden baslat (yonetici)')),
     
     async execute(interaction) {
         const subcommand = interaction.options.getSubcommand();
         
+        // Early check for expired interactions
+        const interactionAge = Date.now() - interaction.createdTimestamp;
+        if (interactionAge > 3 * 60 * 1000) { // 3 minutes timeout
+            console.log('⚠️ Music interaction expired at start, ignoring');
+            return;
+        }
+        
         // Check channel restriction for music commands
         const restriction = checkChannelRestriction(interaction, 'muzik');
         if (restriction.isRestricted) {
-            return interaction.editReply({
+            return interaction.reply({
                 content: restriction.message,
                 flags: 64
             });
@@ -94,7 +105,7 @@ module.exports = {
         const musicPlayer = interaction.client.musicPlayer;
         
         if (!musicPlayer) {
-            return interaction.editReply({ 
+            return interaction.reply({ 
                 content: '🎵 Müzik sistemi mevcut değil! Lütfen bir yöneticiyle iletişime geçin.', 
                 flags: 64
             });
@@ -104,7 +115,7 @@ module.exports = {
         const requiresVoiceChannel = ['cal', 'duraklat', 'gecis', 'durdur', 'ses', 'karistir', 'temizle', 'dongu', 'cikar'];
         if (requiresVoiceChannel.includes(subcommand)) {
             if (!interaction.member.voice.channel) {
-                return interaction.editReply({ 
+                return interaction.reply({ 
                     content: '🎵 Bu komutu kullanmak için bir ses kanalında olmalısınız!', 
                     flags: 64
                 });
@@ -113,7 +124,7 @@ module.exports = {
             // Check if bot is in a different voice channel
             const queue = musicPlayer.player.nodes.get(interaction.guild.id);
             if (queue && queue.connection && queue.connection.joinConfig.channelId !== interaction.member.voice.channel.id) {
-                return interaction.editReply({ 
+                return interaction.reply({ 
                     content: '🎵 Botla aynı ses kanalında olmalısınız!', 
                     flags: 64
                 });
@@ -121,8 +132,22 @@ module.exports = {
         }
         
         try {
+            // Check if interaction is still valid (not expired)
+            const interactionAge = Date.now() - interaction.createdTimestamp;
+            if (interactionAge > 3 * 60 * 1000) { // 3 minutes timeout (Discord's limit)
+                console.log('⚠️ Music interaction expired, ignoring');
+                return;
+            }
+            
             // Defer reply for all music commands to prevent interaction timeout
-            await interaction.deferReply();
+            if (!interaction.replied && !interaction.deferred) {
+                try {
+                    await interaction.deferReply();
+                } catch (deferError) {
+                    console.log('⚠️ Failed to defer interaction (likely expired):', deferError.message);
+                    return; // Exit if we can't defer
+                }
+            }
             
             switch (subcommand) {
                 case 'cal':
@@ -176,12 +201,35 @@ module.exports = {
                 case 'istatistikler':
                     await this.showMusicStats(interaction, musicPlayer);
                     break;
+                    
+                case 'yeniden-baslat':
+                    await this.restartMusicPlayer(interaction, musicPlayer);
+                    break;
             }
         } catch (error) {
             console.error(`Müzik komutu çalıştırılırken hata oluştu ${subcommand}:`, error);
+            
+            // Check if this is an interaction timeout error
+            if (error.code === 10062 || error.message?.includes('Unknown interaction')) {
+                console.log('⚠️ Interaction expired during processing, ignoring');
+                return;
+            }
+            
             const errorMessage = 'Bu müzik komutu çalıştırılırken bir hata oluştu!';
             
-            await interaction.editReply({ content: errorMessage, flags: 64 });
+            try {
+                // Check if we can still reply to the interaction
+                if (!interaction.replied && !interaction.deferred) {
+                    await interaction.reply({ content: errorMessage, flags: 64 });
+                } else if (interaction.deferred) {
+                    await interaction.editReply({ content: errorMessage });
+                } else {
+                    await interaction.followUp({ content: errorMessage, flags: 64 });
+                }
+            } catch (replyError) {
+                console.error('❌ Failed to send error message:', replyError);
+                // Interaction is likely expired or already acknowledged
+            }
         }
     },
     
@@ -401,6 +449,44 @@ module.exports = {
             case QueueRepeatMode.TRACK: return '🔂 Track';
             case QueueRepeatMode.QUEUE: return '🔁 Queue';
             default: return '➡️ Off';
+        }
+    },
+    
+    async restartMusicPlayer(interaction, musicPlayer) {
+        // Check if user has admin permissions
+        if (!interaction.member.permissions.has('Administrator')) {
+            return interaction.editReply({ 
+                content: '❌ Bu komutu kullanmak için yönetici yetkisine sahip olmalısınız!', 
+                flags: 64 
+            });
+        }
+        
+        try {
+            console.log('🔄 Manual music player restart requested by:', interaction.user.tag);
+            
+            const success = await musicPlayer.restartPlayer();
+            
+            if (success) {
+                const embed = new EmbedBuilder()
+                    .setColor('#00FF00')
+                    .setTitle('✅ Music Player Restarted')
+                    .setDescription('Müzik oynatıcısı başarıyla yeniden başlatıldı!')
+                    .addFields({ name: '👤 Restarted by', value: interaction.user.toString(), inline: true })
+                    .setTimestamp();
+                
+                await interaction.editReply({ embeds: [embed] });
+            } else {
+                await interaction.editReply({ 
+                    content: '❌ Müzik oynatıcısı yeniden başlatılamadı!', 
+                    flags: 64 
+                });
+            }
+        } catch (error) {
+            console.error('Error restarting music player:', error);
+            await interaction.editReply({ 
+                content: '❌ Müzik oynatıcısı yeniden başlatılırken hata oluştu!', 
+                flags: 64 
+            });
         }
     }
 };
