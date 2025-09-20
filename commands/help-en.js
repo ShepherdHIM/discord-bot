@@ -9,7 +9,6 @@ module.exports = {
                 .setDescription('Select a specific category')
                 .setRequired(false)
                 .addChoices(
-                    { name: 'Music', value: 'music' },
                     { name: 'Games', value: 'games' },
                     { name: 'Profile & Statistics', value: 'profile' },
                     { name: 'Voice Activity', value: 'voice' },
@@ -46,11 +45,6 @@ module.exports = {
             .setThumbnail(interaction.client.user.displayAvatarURL())
             .addFields(
                 {
-                    name: '🎵 Music Commands',
-                    value: '`/muzik` - Play, pause and control music\n**14 subcommands available**',
-                    inline: true
-                },
-                {
                     name: '🎮 Game Commands', 
                     value: '`/oyunlar` - Fun games to earn XP and coins\n**7 different games**',
                     inline: true
@@ -83,7 +77,7 @@ module.exports = {
             )
             .addFields({
                 name: '💰 XP & Coin System',
-                value: '• Earn **XP** and **coins** every minute in voice channels\n• Also earn rewards by listening to music\n• Play games to earn extra coins\n• Every 100 XP = 1 level',
+                value: '• Earn **XP** and **coins** every minute in voice channels\n• Play games to earn extra coins\n• Every 100 XP = 1 level',
                 inline: false
             })
             .setFooter({ 
@@ -95,11 +89,6 @@ module.exports = {
         // Create category buttons
         const row1 = new ActionRowBuilder()
             .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('help_music')
-                    .setLabel('Music')
-                    .setEmoji('🎵')
-                    .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId('help_games')
                     .setLabel('Games')
@@ -119,16 +108,16 @@ module.exports = {
                     .setCustomId('help_management')
                     .setLabel('Management')
                     .setEmoji('⚙️')
-                    .setStyle(ButtonStyle.Primary)
-            );
-        
-        const row2 = new ActionRowBuilder()
-            .addComponents(
+                    .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId('help_general')
                     .setLabel('General')
                     .setEmoji('🛠️')
-                    .setStyle(ButtonStyle.Secondary),
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        const row2 = new ActionRowBuilder()
+            .addComponents(
                 new ButtonBuilder()
                     .setCustomId('help_features')
                     .setLabel('Features')
@@ -152,9 +141,6 @@ module.exports = {
         let embed;
         
         switch (category) {
-            case 'music':
-                embed = this.createMusicHelp();
-                break;
             case 'games':
                 embed = this.createGamesHelp();
                 break;
@@ -195,36 +181,6 @@ module.exports = {
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ embeds: [embed], components: [backButton], flags: 64 });
         }
-    },
-    
-    createMusicHelp() {
-        return new EmbedBuilder()
-            .setColor('#FF6B00')
-            .setTitle('🎵 Music Commands')
-            .setDescription('Play music from YouTube and other platforms!')
-            .addFields(
-                {
-                    name: '▶️ Basic Controls',
-                    value: '`/muzik cal [song]` - Play song or playlist\n`/muzik duraklat` - Pause/resume\n`/muzik gecis` - Skip to next song\n`/muzik durdur` - Stop music',
-                    inline: false
-                },
-                {
-                    name: '📋 Queue Management',
-                    value: '`/muzik sira` - Show current queue\n`/muzik temizle` - Clear queue\n`/muzik karistir` - Shuffle queue\n`/muzik cikar [position]` - Remove song',
-                    inline: false
-                },
-                {
-                    name: '🔧 Advanced Features',
-                    value: '`/muzik ses [level]` - Volume level (1-100)\n`/muzik dongu [mode]` - Repeat mode\n`/muzik simdi-calan` - Current song info\n`/muzik istatistikler` - Music statistics',
-                    inline: false
-                },
-                {
-                    name: '💰 Rewards',
-                    value: 'Earn **2 XP and 1 coin per minute** by listening to music!',
-                    inline: false
-                }
-            )
-            .setFooter({ text: 'You must be in a voice channel!' });
     },
     
     createGamesHelp() {
@@ -390,17 +346,12 @@ module.exports = {
             .addFields(
                 {
                     name: '🎤 Voice Activity Tracking',
-                    value: '• Earn XP and coins per minute\n• Bonus rewards for listening to music\n• Automatic voice status updates\n• Minimum user count control',
+                    value: '• Earn XP and coins per minute\n• Automatic voice status updates\n• Minimum user count control',
                     inline: false
                 },
                 {
                     name: '🎮 Comprehensive Gaming System',
                     value: '• 7 different game types\n• Luck and strategy games\n• Daily bonus system\n• Detailed game statistics',
-                    inline: false
-                },
-                {
-                    name: '🎵 Music Integration',
-                    value: '• YouTube and other platforms\n• 14 different music commands\n• Playlist management\n• Earn rewards by listening to music',
                     inline: false
                 },
                 {

@@ -424,7 +424,7 @@ module.exports = {
             .addFields(
                 { name: '👤 Kullanıcı', value: targetUser.toString(), inline: true },
                 { name: '🔧 İşlem', value: actionText, inline: true },
-                { name: '⚡ Yeni XP', value: `${newXP.toLocaleString()} XP (Seviye ${Math.floor(newXP / 100)})`, inline: true },
+                { name: '⚡ Yeni XP', value: `${newXP.toLocaleString()} XP${newLevel <= oldLevel ? ` (Seviye ${Math.floor(newXP / 100)})` : ''}`, inline: true },
                 { name: '💰 Yeni Coin', value: `${newCoins.toLocaleString()} coin`, inline: true },
                 { name: '👑 Yönetici', value: interaction.user.toString(), inline: true },
                 { name: '📅 Tarih', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true }

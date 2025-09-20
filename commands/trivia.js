@@ -410,11 +410,15 @@ module.exports = {
             .setDescription(rewardText)
             .addFields(
                 { name: '💰 Yeni Bakiye', value: `${newCoins} coin`, inline: true },
-                { name: '📈 Toplam XP', value: `${newXP} XP`, inline: true },
-                { name: '⭐ Seviye', value: `Seviye ${newLevel}`, inline: true }
+                { name: '📈 Toplam XP', value: `${newXP} XP`, inline: true }
             )
             .setFooter({ text: 'Başka bir soru deneyiniz!' })
             .setTimestamp();
+        
+        // Only add level field if no level up occurred (to avoid duplicate level messages)
+        if (newLevel <= oldLevel) {
+            resultEmbed.addFields({ name: '⭐ Seviye', value: `Seviye ${newLevel}`, inline: true });
+        }
         
         await interaction.update({ embeds: [resultEmbed], components: [] });
         

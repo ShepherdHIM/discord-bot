@@ -2,7 +2,6 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
-const MusicPlayerManager = require('./musicPlayer.js');
 
 // Botu başlat
 const client = new Client({
@@ -28,21 +27,9 @@ for (const file of commandFiles) {
     }
 }
 
-// MusicPlayerManager başlat
-client.musicPlayer = new MusicPlayerManager(client);
-
-// YouTubei extractor ekle
-const { YoutubeiExtractor } = require('discord-player-youtubei');
-
+// Bot hazır olduğunda
 client.once('clientReady', async () => {
     console.log(`🎉 Bot is online as ${client.user.tag}`);
-
-    try {
-        await client.musicPlayer.player.extractors.register(YoutubeiExtractor, {});
-        console.log('✅ Youtubei extractor başarıyla kaydedildi.');
-    } catch (err) {
-        console.error('❌ Youtubei extractor kaydedilemedi:', err);
-    }
 });
 
 // Slash komutları dinle

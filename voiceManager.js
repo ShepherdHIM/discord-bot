@@ -153,6 +153,8 @@ class VoiceActivityManager {
         this.client = client;
         this.db = new VoiceActivityDB();
         this.activeSessions = new Map(); // userId -> sessionData
+        this.levelUpCooldowns = new Map(); // Track level up cooldowns to prevent duplicates
+        this.cooldownDuration = 5000; // 5 seconds cooldown between level up announcements
         
         // Cleanup old sessions on startup
         this.db.cleanupOldSessions();
@@ -160,6 +162,13 @@ class VoiceActivityManager {
         // Set up periodic cleanup (every hour)
         setInterval(() => {
             this.db.cleanupOldSessions();
+            // Clean up expired cooldowns
+            const now = Date.now();
+            for (const [key, timestamp] of this.levelUpCooldowns.entries()) {
+                if (now - timestamp > this.cooldownDuration * 2) { // Keep cooldowns for 2x duration
+                    this.levelUpCooldowns.delete(key);
+                }
+            }
         }, 60 * 60 * 1000);
         
         // Set up periodic XP/coin awarding (every minute)
@@ -496,6 +505,22 @@ class VoiceActivityManager {
     // Handle level up event - assign roles and announce
     async handleLevelUp(member, newLevel) {
         try {
+            const userId = member.user.id;
+            const guildId = member.guild.id;
+            const cooldownKey = `${userId}-${guildId}`;
+            
+            // Check if user is on cooldown for level up announcements
+            if (this.levelUpCooldowns.has(cooldownKey)) {
+                const lastLevelUp = this.levelUpCooldowns.get(cooldownKey);
+                if (Date.now() - lastLevelUp < this.cooldownDuration) {
+                    console.log(`⏰ Skipping duplicate level up announcement for ${member.user.username} (on cooldown)`);
+                    return;
+                }
+            }
+            
+            // Set cooldown
+            this.levelUpCooldowns.set(cooldownKey, Date.now());
+            
             console.log(`🎉 Handling level up for ${member.user.username} to level ${newLevel}`);
             // Assign level role if configured
             await this.assignLevelRole(member, newLevel);
@@ -647,25 +672,25 @@ class VoiceActivityManager {
             if (channel) {
                 const embed = {
                     color: 0xFFD700,
-                    title: '🎉 Level Up!',
-                    description: `Congratulations ${member}! You reached **Level ${newLevel}**!`,
+                    title: '🎉 Seviye Atladınız!',
+                    description: `Tebrikler ${member}! **Seviye ${newLevel}**'e ulaştınız!`,
                     thumbnail: {
                         url: member.user.displayAvatarURL({ dynamic: true })
                     },
                     fields: [
                         {
-                            name: '🏆 New Level',
+                            name: '🏆 Yeni Seviye',
                             value: newLevel.toString(),
                             inline: true
                         },
                         {
-                            name: '⚡ Total XP',
+                            name: '⚡ Toplam XP',
                             value: (newLevel * 100).toLocaleString(),
                             inline: true
                         }
                     ],
                     footer: {
-                        text: 'Keep chatting in voice channels to earn more XP!'
+                        text: 'Ses kanallarında zaman geçirerek daha fazla XP kazanın!'
                     },
                     timestamp: new Date().toISOString()
                 };

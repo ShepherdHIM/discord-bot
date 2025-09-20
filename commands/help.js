@@ -9,7 +9,6 @@ module.exports = {
                 .setDescription('Belirli bir kategori secin')
                 .setRequired(false)
                 .addChoices(
-                    { name: 'Muzik', value: 'muzik' },
                     { name: 'Oyunlar', value: 'oyunlar' },
                     { name: 'Profil & Istatistikler', value: 'profil' },
                     { name: 'Ses Aktivitesi', value: 'ses' },
@@ -46,11 +45,6 @@ module.exports = {
             .setThumbnail(interaction.client.user.displayAvatarURL())
             .addFields(
                 {
-                    name: '🎵 Muzik Komutlari',
-                    value: '`/muzik` - Muzik calmak, duraklatmak ve kontrol etmek icin\n**14 alt komut mevcut**',
-                    inline: true
-                },
-                {
                     name: '🎮 Oyun Komutlari', 
                     value: '`/oyunlar` - XP ve coin kazanmak icin eglenceli oyunlar\n**7 farkli oyun**',
                     inline: true
@@ -83,7 +77,7 @@ module.exports = {
             )
             .addFields({
                 name: '💰 XP & Coin Sistemi',
-                value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Muzik dinleyerek de odul kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
+                value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
                 inline: false
             })
             .setFooter({ 
@@ -95,11 +89,6 @@ module.exports = {
         // Create category buttons
         const row1 = new ActionRowBuilder()
             .addComponents(
-                new ButtonBuilder()
-                    .setCustomId('help_muzik')
-                    .setLabel('Muzik')
-                    .setEmoji('🎵')
-                    .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId('help_oyunlar')
                     .setLabel('Oyunlar')
@@ -119,16 +108,16 @@ module.exports = {
                     .setCustomId('help_yonetim')
                     .setLabel('Yonetim')
                     .setEmoji('⚙️')
-                    .setStyle(ButtonStyle.Primary)
-            );
-        
-        const row2 = new ActionRowBuilder()
-            .addComponents(
+                    .setStyle(ButtonStyle.Primary),
                 new ButtonBuilder()
                     .setCustomId('help_genel')
                     .setLabel('Genel')
                     .setEmoji('🛠️')
-                    .setStyle(ButtonStyle.Secondary),
+                    .setStyle(ButtonStyle.Secondary)
+            );
+        
+        const row2 = new ActionRowBuilder()
+            .addComponents(
                 new ButtonBuilder()
                     .setCustomId('help_ozellikler')
                     .setLabel('Ozellikler')
@@ -152,9 +141,6 @@ module.exports = {
         let embed;
         
         switch (category) {
-            case 'muzik':
-                embed = this.createMusicHelp();
-                break;
             case 'oyunlar':
                 embed = this.createGamesHelp();
                 break;
@@ -195,36 +181,6 @@ module.exports = {
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ embeds: [embed], components: [backButton], flags: 64 });
         }
-    },
-    
-    createMusicHelp() {
-        return new EmbedBuilder()
-            .setColor('#FF6B00')
-            .setTitle('🎵 Muzik Komutlari')
-            .setDescription('YouTube ve diger platformlardan muzik cal!')
-            .addFields(
-                {
-                    name: '▶️ Temel Kontroller',
-                    value: '`/muzik cal [sarki]` - Sarki veya playlist cal\n`/muzik duraklat` - Duraklat/devam ettir\n`/muzik gecis` - Sonraki sarkiya gec\n`/muzik durdur` - Muzigi durdur',
-                    inline: false
-                },
-                {
-                    name: '📋 Sira Yonetimi',
-                    value: '`/muzik sira` - Calma sirasini goster\n`/muzik temizle` - Sirayi temizle\n`/muzik karistir` - Sirayi karistir\n`/muzik cikar [pozisyon]` - Sarkiyi kaldir',
-                    inline: false
-                },
-                {
-                    name: '🔧 Gelismis Ozellikler',
-                    value: '`/muzik ses [seviye]` - Ses seviyesi (1-100)\n`/muzik dongu [mod]` - Tekrar modu\n`/muzik simdi-calan` - Suanki sarki bilgileri\n`/muzik istatistikler` - Muzik istatistikleri',
-                    inline: false
-                },
-                {
-                    name: '💰 Oduller',
-                    value: 'Muzik dinleyerek **dakikada 2 XP ve 1 coin** kazanin!',
-                    inline: false
-                }
-            )
-            .setFooter({ text: 'Ses kanalinda olmalisiniz!' });
     },
     
     createGamesHelp() {
@@ -390,17 +346,12 @@ module.exports = {
             .addFields(
                 {
                     name: '🎤 Ses Aktivitesi Takibi',
-                    value: '• Dakika bazında XP ve coin kazanma\n• Müzik dinleyerek bonus ödüller\n• Otomatik ses durumu güncelleme\n• Minimum kullanıcı sayısı kontrolü',
+                    value: '• Dakika bazında XP ve coin kazanma\n• Otomatik ses durumu güncelleme\n• Minimum kullanıcı sayısı kontrolü',
                     inline: false
                 },
                 {
                     name: '🎮 Kapsamlı Oyun Sistemi',
                     value: '• 7 farklı oyun türü\n• Şans ve strateji oyunları\n• Günlük bonus sistemi\n• Detaylı oyun istatistikleri',
-                    inline: false
-                },
-                {
-                    name: '🎵 Müzik Entegrasyonu',
-                    value: '• YouTube ve diğer platformlar\n• 14 farklı müzik komutu\n• Çalma listesi yönetimi\n• Müzik dinleyerek ödül kazanma',
                     inline: false
                 },
                 {

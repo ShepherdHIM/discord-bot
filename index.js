@@ -2,7 +2,6 @@ const { Client, GatewayIntentBits, Collection, Events, ActionRowBuilder, ButtonB
 const fs = require('fs');
 const path = require('path');
 const VoiceActivityManager = require('./voiceManager');
-const MusicPlayerManager = require('./musicPlayer');
 require('dotenv').config();
 
 // Debug: Check if environment variables are loaded
@@ -27,7 +26,6 @@ client.commands = new Collection();
 
 // Initialize voice activity manager
 let voiceManager;
-let musicPlayer;
 
 // Track browser login users
 const browserLoginUsers = new Map(); // userId -> {guildId, lastActivity}
@@ -134,7 +132,6 @@ client.once(Events.ClientReady, async () => {
     const presenceMessages = [
         { type: 0, name: '/yardim | All commands' }, // Playing
         { type: 0, name: 'The Last of Us™' }, // Playing
-        { type: 2, name: '🎵 Müzik keyfi zamanı' }, // Listening
         { type: 3, name: '👀 Sizi izliyorum...' } // Watching
     ];
     
@@ -173,42 +170,6 @@ client.once(Events.ClientReady, async () => {
     client.voiceManager = voiceManager; // Attach to client for command access
     console.log('🎤 Voice activity tracking initialized!');
     
-    // Initialize music player (guard against duplicate init)
-    if (!client.musicPlayer) {
-        try {
-            console.log('🎵 Initializing music player...');
-            musicPlayer = new MusicPlayerManager(client);
-            client.musicPlayer = musicPlayer; // Attach to client for command access
-            console.log('🎵 Music player initialized successfully!');
-            console.log('🎵 Music player attached to client:', !!client.musicPlayer);
-            
-            // Set up periodic health checks for the music player
-            setInterval(async () => {
-                if (client.musicPlayer && !client.musicPlayer.isPlayerHealthy()) {
-                    console.log('⚠️ Music player health check failed, attempting restart...');
-                    try {
-                        await client.musicPlayer.restartPlayer();
-                        console.log('✅ Music player restarted successfully');
-                    } catch (restartError) {
-                        console.error('❌ Failed to restart music player:', restartError);
-                        // If restart fails multiple times, disable music features
-                        client.musicPlayer = null;
-                        console.log('🎵 Music player disabled due to repeated failures');
-                    }
-                }
-            }, 5 * 60 * 1000); // Check every 5 minutes
-            
-        } catch (error) {
-            console.error('❌ Music player initialization failed:', error.message);
-            console.log('🎵 Music player will not be available');
-            console.log('🎵 Bot will continue running without music features');
-            // Set a dummy music player to prevent crashes
-            client.musicPlayer = null;
-        }
-    } else {
-        console.log('🎵 Music player already initialized, skipping re-init');
-    }
-    
     // Bot status is handled by the rotating presence system above
     
     // Auto-deploy slash commands to the guild if none are installed
@@ -227,11 +188,18 @@ client.on(Events.InteractionCreate, async interaction => {
             console.error(`❌ No command matching ${interaction.commandName} was found.`);
             return interaction.reply({ 
                 content: '❌ Bu komut bulunamadı!', 
-                ephemeral: true 
+                flags: 64 
             }).catch(console.error);
         }
 
         try {
+            // Check if interaction is still valid (not expired)
+            const interactionAge = Date.now() - interaction.createdTimestamp;
+            if (interactionAge > 3 * 60 * 1000) { // 3 minutes timeout
+                console.log(`⚠️ ${interaction.commandName} interaction expired, ignoring`);
+                return;
+            }
+            
             console.log(`🔄 Executing command: ${interaction.commandName} by ${interaction.user.tag}`);
             await command.execute(interaction);
             console.log(`✅ Command executed successfully: ${interaction.commandName}`);
@@ -241,13 +209,19 @@ client.on(Events.InteractionCreate, async interaction => {
         } catch (error) {
             console.error(`❌ Error executing ${interaction.commandName}:`, error);
             
+            // Check if this is an interaction timeout error
+            if (error.code === 10062 || error.message?.includes('Unknown interaction')) {
+                console.log(`⚠️ ${interaction.commandName} interaction expired during processing, ignoring`);
+                return;
+            }
+            
             const errorMessage = '❌ Bu komutu çalıştırırken bir hata oluştu!';
             
             try {
                 if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ content: errorMessage, ephemeral: true });
+                    await interaction.followUp({ content: errorMessage, flags: 64 });
                 } else {
-                    await interaction.reply({ content: errorMessage, ephemeral: true });
+                    await interaction.reply({ content: errorMessage, flags: 64 });
                 }
             } catch (followUpError) {
                 console.error('❌ Error sending error message:', followUpError);
@@ -472,10 +446,6 @@ client.on(Events.InteractionCreate, async interaction => {
             } else if (action2 === 'trivia') {
                 // Handle Trivia game
                 await client.handleTriviaAnswer(interaction);
-            } else if (action === 'music') {
-                // Handle Music controls
-                const musicAction = customIdParts[customIdParts.length - 1]; // Get the action from the button ID
-                await client.handleMusicControls(interaction, musicAction);
             } else if (action2 === 'help') {
                 // Handle Help category buttons
                 // Extract category from help_[category] format
@@ -845,127 +815,6 @@ client.handleTriviaAnswer = async (interaction) => {
     trackBrowserLoginActivity(interaction.user.id, interaction.guildId);
 };
 
-// Music control handler
-client.handleMusicControls = async (interaction, action) => {
-    const musicPlayer = client.musicPlayer;
-    if (!musicPlayer) {
-        return interaction.reply({
-            content: '❌ Music system is not available!',
-            ephemeral: true
-        });
-    }
-    
-    // Check if user is in voice channel
-    if (!interaction.member.voice.channel) {
-        return interaction.reply({
-            content: '🎵 You need to be in a voice channel to control music!',
-            ephemeral: true
-        });
-    }
-    
-    const queue = musicPlayer.player.nodes.get(interaction.guild.id);
-    
-    try {
-        switch (action) {
-            case 'pause':
-                if (!queue || !queue.node.isPlaying()) {
-                    return interaction.reply({ content: '❌ No music is playing!', ephemeral: true });
-                }
-                
-                queue.node.setPaused(!queue.node.isPaused());
-                const isPaused = queue.node.isPaused();
-                
-                await interaction.reply({
-                    content: `${isPaused ? '⏸️ Music paused' : '▶️ Music resumed'}!`,
-                    ephemeral: true
-                });
-                break;
-                
-            case 'skip':
-                if (!queue || !queue.node.isPlaying()) {
-                    return interaction.reply({ content: '❌ No music is playing!', ephemeral: true });
-                }
-                
-                const currentTrack = queue.currentTrack;
-                queue.node.skip();
-                
-                await interaction.reply({
-                    content: `⏭️ Skipped: **${currentTrack.title}**`,
-                    ephemeral: true
-                });
-                break;
-                
-            case 'stop':
-                if (!queue) {
-                    return interaction.reply({ content: '❌ No music is playing!', ephemeral: true });
-                }
-                
-                queue.delete();
-                
-                await interaction.reply({
-                    content: '⏹️ Music stopped and queue cleared!',
-                    ephemeral: true
-                });
-                break;
-                
-            case 'queue':
-                // Show queue in ephemeral message
-                const musicCommand = client.commands.get('muzik');
-                if (musicCommand) {
-                    const mockInteraction = {
-                        ...interaction,
-                        client: client,
-                        options: {
-                            getSubcommand: () => 'sira'
-                        },
-                        reply: (options) => interaction.reply({ ...options, ephemeral: true })
-                    };
-                    await musicCommand.execute(mockInteraction);
-                }
-                break;
-                
-            case 'shuffle':
-                if (!queue || !queue.tracks.size) {
-                    return interaction.reply({ content: '❌ The queue is empty!', ephemeral: true });
-                }
-                
-                queue.tracks.shuffle();
-                
-                await interaction.reply({
-                    content: `🔀 Shuffled ${queue.tracks.size} track${queue.tracks.size !== 1 ? 's' : ''}!`,
-                    ephemeral: true
-                });
-                break;
-                
-            default:
-                await interaction.reply({
-                    content: '❌ Bilinmeyen müzik kontrol eylemi!',
-                    ephemeral: true
-                });
-        }
-    } catch (error) {
-        console.error('Error handling music controls:', error);
-        console.error('Music control error details:', {
-            message: error.message,
-            stack: error.stack,
-            action: action,
-            guildId: interaction.guild.id,
-            userId: interaction.user.id
-        });
-        
-        try {
-            await interaction.reply({
-                content: '❌ Müzik kontrolünü işlerken bir hata oluştu!',
-                ephemeral: true
-            });
-        } catch (replyError) {
-            console.error('Failed to send error reply:', replyError);
-        }
-    }
-    
-    // Track browser login activity
-    trackBrowserLoginActivity(interaction.user.id, interaction.guildId);
-};
 
 // Help button handler
 client.handleHelpButtons = async (interaction, category) => {
@@ -996,11 +845,6 @@ client.handleHelpButtons = async (interaction, category) => {
                 title: '✨ Bot Özellikleri',
                 description: 'Bu botun sundugu tum ozellikler:',
                 fields: [
-                    {
-                        name: '🎵 Müzik Sistemi',
-                        value: '• YouTube, Spotify destegi\n• Kaliteli ses streaming\n• Playlist yönetimi\n• Interaktif kontroller',
-                        inline: true
-                    },
                     {
                         name: '💰 Ekonomi Sistemi',
                         value: '• XP & Coin kazanma\n• Seviye sistemi\n• Günlük bonuslar\n• Liderlik tablolari',
@@ -1078,11 +922,6 @@ client.handleHelpButtons = async (interaction, category) => {
                 .setThumbnail(interaction.client.user.displayAvatarURL())
                 .addFields(
                     {
-                        name: '🎵 Muzik Komutlari',
-                        value: '`/muzik` - Muzik calmak, duraklatmak ve kontrol etmek icin\n**14 alt komut mevcut**',
-                        inline: true
-                    },
-                    {
                         name: '🎮 Oyun Komutlari', 
                         value: '`/oyunlar` - XP ve coin kazanmak icin eglenceli oyunlar\n**7 farkli oyun**',
                         inline: true
@@ -1115,7 +954,7 @@ client.handleHelpButtons = async (interaction, category) => {
                 )
                 .addFields({
                     name: '💰 XP & Coin Sistemi',
-                    value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Muzik dinleyerek de odul kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
+                    value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
                     inline: false
                 })
                 .setFooter({ 
@@ -1127,11 +966,6 @@ client.handleHelpButtons = async (interaction, category) => {
             // Create category buttons
             const row1 = new ActionRowBuilder()
                 .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('help_muzik')
-                        .setLabel('Muzik')
-                        .setEmoji('🎵')
-                        .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('help_oyunlar')
                         .setLabel('Oyunlar')
@@ -1151,16 +985,16 @@ client.handleHelpButtons = async (interaction, category) => {
                         .setCustomId('help_yonetim')
                         .setLabel('Yonetim')
                         .setEmoji('⚙️')
-                        .setStyle(ButtonStyle.Primary)
-                );
-            
-            const row2 = new ActionRowBuilder()
-                .addComponents(
+                        .setStyle(ButtonStyle.Primary),
                     new ButtonBuilder()
                         .setCustomId('help_genel')
                         .setLabel('Genel')
                         .setEmoji('🛠️')
-                        .setStyle(ButtonStyle.Secondary),
+                        .setStyle(ButtonStyle.Secondary)
+                );
+            
+            const row2 = new ActionRowBuilder()
+                .addComponents(
                     new ButtonBuilder()
                         .setCustomId('help_ozellikler')
                         .setLabel('Ozellikler')
@@ -1182,36 +1016,6 @@ client.handleHelpButtons = async (interaction, category) => {
         // Handle other categories by showing their specific help
         let embed;
         switch (category) {
-            case 'muzik':
-                embed = new EmbedBuilder()
-                    .setColor('#FF6B00')
-                    .setTitle('🎵 Muzik Komutlari')
-                    .setDescription('YouTube ve diger platformlardan muzik cal!')
-                    .addFields(
-                        {
-                            name: '▶️ Temel Kontroller',
-                            value: '`/muzik cal [sarki]` - Sarki veya playlist cal\n`/muzik duraklat` - Duraklat/devam ettir\n`/muzik gecis` - Sonraki sarkiya gec\n`/muzik durdur` - Muzigi durdur',
-                            inline: false
-                        },
-                        {
-                            name: '📋 Sira Yonetimi',
-                            value: '`/muzik sira` - Calma sirasini goster\n`/muzik temizle` - Sirayi temizle\n`/muzik karistir` - Sirayi karistir\n`/muzik cikar [pozisyon]` - Sarkiyi kaldir',
-                            inline: false
-                        },
-                        {
-                            name: '🔧 Gelismis Ozellikler',
-                            value: '`/muzik ses [seviye]` - Ses seviyesi (1-100)\n`/muzik dongu [mod]` - Tekrar modu\n`/muzik simdi-calan` - Suanki sarki bilgileri\n`/muzik istatistikler` - Muzik istatistikleri',
-                            inline: false
-                        },
-                        {
-                            name: '💰 Oduller',
-                            value: 'Muzik dinleyerek **dakikada 2 XP ve 1 coin** kazanin!',
-                            inline: false
-                        }
-                    )
-                    .setFooter({ text: 'Ses kanalinda olmalisiniz!' });
-                break;
-                
             case 'oyunlar':
                 embed = new EmbedBuilder()
                     .setColor('#FF1493')
@@ -1371,11 +1175,6 @@ client.handleHelpButtons = async (interaction, category) => {
                     .setThumbnail(interaction.client.user.displayAvatarURL())
                     .addFields(
                         {
-                            name: '🎵 Muzik Komutlari',
-                            value: '`/muzik` - Muzik calmak, duraklatmak ve kontrol etmek icin\n**14 alt komut mevcut**',
-                            inline: true
-                        },
-                        {
                             name: '🎮 Oyun Komutlari', 
                             value: '`/oyunlar` - XP ve coin kazanmak icin eglenceli oyunlar\n**7 farkli oyun**',
                             inline: true
@@ -1408,7 +1207,7 @@ client.handleHelpButtons = async (interaction, category) => {
                     )
                     .addFields({
                         name: '💰 XP & Coin Sistemi',
-                        value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Muzik dinleyerek de odul kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
+                        value: '• Ses kanallarinda her dakika **XP** ve **coin** kazanin\n• Oyunlar oynayarak ekstra coin elde edin\n• Her 100 XP = 1 seviye',
                         inline: false
                     })
                     .setFooter({ 
@@ -1420,11 +1219,6 @@ client.handleHelpButtons = async (interaction, category) => {
                 // Create category buttons
                 const defaultRow1 = new ActionRowBuilder()
                     .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('help_muzik')
-                            .setLabel('Muzik')
-                            .setEmoji('🎵')
-                            .setStyle(ButtonStyle.Primary),
                         new ButtonBuilder()
                             .setCustomId('help_oyunlar')
                             .setLabel('Oyunlar')
@@ -1444,16 +1238,16 @@ client.handleHelpButtons = async (interaction, category) => {
                             .setCustomId('help_yonetim')
                             .setLabel('Yonetim')
                             .setEmoji('⚙️')
-                            .setStyle(ButtonStyle.Primary)
-                    );
-                
-                const defaultRow2 = new ActionRowBuilder()
-                    .addComponents(
+                            .setStyle(ButtonStyle.Primary),
                         new ButtonBuilder()
                             .setCustomId('help_genel')
                             .setLabel('Genel')
                             .setEmoji('🛠️')
-                            .setStyle(ButtonStyle.Secondary),
+                            .setStyle(ButtonStyle.Secondary)
+                    );
+                
+                const defaultRow2 = new ActionRowBuilder()
+                    .addComponents(
                         new ButtonBuilder()
                             .setCustomId('help_ozellikler')
                             .setLabel('Ozellikler')
@@ -1639,23 +1433,22 @@ process.on('unhandledRejection', error => {
     console.error('Unhandled promise rejection:', error);
 });
 
-// Graceful shutdown
+// Graceful shutdown - Only handle manual shutdown (Ctrl+C)
 process.on('SIGINT', () => {
-    console.log('\n🚫 Shutting down gracefully...');
+    console.log('\n🚫 Manual shutdown detected (Ctrl+C)...');
+    console.log('🔄 Cleaning up resources...');
     if (voiceManager) {
         voiceManager.cleanup();
     }
+    console.log('✅ Cleanup complete. Bot shutting down.');
     client.destroy();
     process.exit(0);
 });
 
-process.on('SIGTERM', () => {
-    console.log('\n🚫 Shutting down gracefully...');
-    if (voiceManager) {
-        voiceManager.cleanup();
-    }
-    client.destroy();
-    process.exit(0);
+// Don't auto-shutdown on SIGTERM - let the bot stay running
+process.on('SIGTERM', (signal) => {
+    console.log(`\n⚠️ SIGTERM received (${signal}), but keeping bot running...`);
+    console.log('💡 Use Ctrl+C to manually shutdown the bot');
 });
 
 // Login to Discord with your app's token
@@ -1674,6 +1467,17 @@ const loginTimeout = setTimeout(() => {
 client.login(process.env.DISCORD_TOKEN).then(() => {
     clearTimeout(loginTimeout);
     console.log('✅ Login successful!');
+    console.log('🎯 Bot is now running and ready to handle commands!');
+    console.log('💡 Use Ctrl+C to stop the bot when needed');
+    
+    // Keep the process alive
+    setInterval(() => {
+        // This keeps the event loop active
+        if (!client.isReady()) {
+            console.log('⚠️ Bot disconnected, attempting to reconnect...');
+        }
+    }, 30000); // Check every 30 seconds
+    
 }).catch(error => {
     clearTimeout(loginTimeout);
     console.error('❌ Failed to login:', error);

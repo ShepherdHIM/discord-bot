@@ -57,7 +57,6 @@ module.exports = {
                     { name: 'Duyuru', value: 'duyuru' },
                     { name: 'Hoşgeldin', value: 'hosgeldin' },
                     { name: 'Log', value: 'log' },
-                    { name: 'Müzik', value: 'muzik' },
                     { name: 'Dükkan', value: 'dukkan' },
                     { name: 'Göster', value: 'goster' },
                     { name: 'Test', value: 'test' },
@@ -99,10 +98,6 @@ module.exports = {
                     
                 case 'log':
                     await this.setChannel(interaction, settings, guildId, 'log', channel, 'Log');
-                    break;
-                    
-                case 'muzik':
-                    await this.setChannel(interaction, settings, guildId, 'muzik', channel, 'Müzik');
                     break;
                     
                 case 'dukkan':
@@ -181,7 +176,6 @@ module.exports = {
             { key: 'duyuruChannel', name: '📢 Duyuru Kanalı', emoji: '📢' },
             { key: 'hosgeldinChannel', name: '👋 Hoşgeldin Kanalı', emoji: '👋' },
             { key: 'logChannel', name: '📝 Log Kanalı', emoji: '📝' },
-            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' },
             { key: 'dukkanChannel', name: '🛒 Dükkan Kanalı', emoji: '🛒' }
         ];
 
@@ -230,7 +224,7 @@ module.exports = {
             .setTimestamp();
 
         // Clear all channel settings
-        const channelTypes = ['duyuruChannel', 'hosgeldinChannel', 'logChannel', 'muzikChannel', 'dukkanChannel'];
+        const channelTypes = ['duyuruChannel', 'hosgeldinChannel', 'logChannel', 'dukkanChannel'];
         let clearedCount = 0;
 
         for (const channelType of channelTypes) {
@@ -273,7 +267,6 @@ module.exports = {
             { key: 'duyuruChannel', name: '📢 Duyuru Kanalı', emoji: '📢' },
             { key: 'hosgeldinChannel', name: '👋 Hoşgeldin Kanalı', emoji: '👋' },
             { key: 'logChannel', name: '📝 Log Kanalı', emoji: '📝' },
-            { key: 'muzikChannel', name: '🎵 Müzik Kanalı', emoji: '🎵' },
             { key: 'dukkanChannel', name: '🛒 Dükkan Kanalı', emoji: '🛒' }
         ];
 
